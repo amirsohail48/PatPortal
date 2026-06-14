@@ -16,7 +16,7 @@ class PatientLegacyBackend(BaseBackend):
             return None
 
         try:
-            patient_pass = Tblpatientpass.objects.get(fldpatientval=username)
+            patient_pass = Tblpatientpass.objects.using("legacy_hmis").get(fldpatientval=username)
         except Tblpatientpass.DoesNotExist:
             return None
 
