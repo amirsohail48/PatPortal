@@ -6,10 +6,15 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
-    gcc \
+    build-essential \
     default-libmysqlclient-dev \
     pkg-config \
-    netcat-openbsd \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libcairo2 \
+    libffi-dev \
+    libjpeg-dev \
+    libopenjp2-7-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/
@@ -19,7 +24,8 @@ RUN pip install -r requirements.txt
 
 COPY . /app/
 
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN mkdir -p /app/staticfiles /app/media
 
-CMD ["/entrypoint.sh"]
+EXPOSE 8000
+
+CMD ["gunicorn", "PatPortal.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]
