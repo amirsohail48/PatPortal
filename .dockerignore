@@ -1,0 +1,15 @@
+.git
+.vscode
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+portalenv
+venv
+env
+db.sqlite3
+media
+staticfiles
+frontend/node_modules
+frontend/dist
+.env
