@@ -63,7 +63,7 @@ def invoices_receipts_api(request):
             patient_id=patient_id,
             encounter_id=encounter_id,
         )
-        print(data)
+        
         return JsonResponse({
             "success": True,
             **data,

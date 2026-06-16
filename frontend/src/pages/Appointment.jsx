@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import hospitalLogo from "../assets/hospital-logo.png";
 import esewaLogo from "../assets/esewa.png"
 import connectipsLogo from "../assets/connectIPS.png"
 import khaltiLogo from "../assets/khaltiLogo.png"
+import PageHeader from "../components/PageHeader";
+import PageFooter from "../components/PageFooter";
 
 const GROUP_DESCRIPTIONS = {
   "General OPD":
@@ -590,7 +591,11 @@ export default function AppointmentPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-800">
-      <header className="bg-[#052f48] text-white shadow-md sticky top-0 z-50">
+      <PageHeader
+        title="Online Appointment"
+      />
+
+      {/* <header className="bg-[#052f48] text-white shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-white rounded-lg p-1 flex items-center justify-center shadow-sm">
@@ -621,7 +626,7 @@ export default function AppointmentPage() {
             Back to Dashboard
           </button>
         </div>
-      </header>
+      </header> */}
 
       <section className="bg-gradient-to-r from-[#052f48] to-[#254a60] text-white py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-5 items-center">
@@ -870,14 +875,7 @@ export default function AppointmentPage() {
         )}
       </main>
 
-      <footer className="bg-[#052f48] text-gray-400 text-xs py-5 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center sm:flex sm:justify-between">
-          <p>Patan Academy of Health Sciences</p>
-          <a href="https://d-codetechnology.com/" className="text-white font-bold underline">
-            &copy; 2026 D-Code Technology Pvt. Ltd. All rights reserved.
-          </a>
-        </div>
-      </footer>
+      <PageFooter/>
 
       {showPaymentModal && (
         <AppointmentPaymentModal

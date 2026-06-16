@@ -10,6 +10,7 @@ from legacy_hmis.models import Tblpatientpass
 from accounts.legacy_password import check_legacy_password, encode_ascii_chunk_password
 from django.contrib.auth import get_user_model, update_session_auth_hash
 from django.db import transaction
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -34,11 +35,15 @@ def auth_status(request):
         return JsonResponse({
             "authenticated": False,
             "patient_id": "",
+            "hospital_name": settings.HOSPITAL_NAME,
+            "hospital_address": settings.HOSPITAL_ADDRESS,
         })
 
     return JsonResponse({
         "authenticated": True,
         "patient_id": request.user.username,
+        "hospital_name": settings.HOSPITAL_NAME,
+        "hospital_address": settings.HOSPITAL_ADDRESS,
     })
 
 

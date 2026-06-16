@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import hospitalLogo from "../assets/hospital-logo.png";
+import PageHeader from "../components/PageHeader";
+
 
 export default function PrescriptionPage() {
   const [encounters, setEncounters] = useState([]);

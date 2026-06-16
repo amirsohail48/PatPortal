@@ -1,6 +1,9 @@
 import { useState,useEffect } from 'react';
 import hospitalLogo from "../assets/hospital-logo.png";
 import pahsImage from "../assets/pahs1.jpeg";
+import PageHeader from "../components/PageHeader";
+import PageFooter from "../components/PageFooter";
+
 
 function getCookie(name) {
   const cookies = document.cookie ? document.cookie.split("; ") : [];
@@ -18,6 +21,7 @@ function getCookie(name) {
 }
 
 export default function HomePage() {
+    const [hospitalName, setHospitalName] = useState("D-Code technology Pvt. Ltd.");
     const [patientId, setPatientId] = useState("");
     const [patient, setPatient] = useState("");
     const [currentDeposit, setCurrentDeposit] = useState("0.00");
@@ -37,7 +41,7 @@ export default function HomePage() {
             }
 
             if (data.success) {
-            setCurrentDeposit(data["totals"]["Receipts"]["received_amount"] || "0.00");
+            setCurrentDeposit(data?.totals?.Receipts?.received_amount || "0.00");
             }
         } catch (error) {
             console.error("Failed to load current deposit:", error);
@@ -54,7 +58,7 @@ export default function HomePage() {
         window.location.href = "/login";
         return;
         }
-
+        setHospitalName(data.hospital_name || "D-Code technology Pvt. Ltd.");
         setPatientId(data.patient_id);
         fetchCurrentDeposit();
         return fetch("/api/patients/profile/",{
@@ -124,6 +128,28 @@ export default function HomePage() {
     ];
     const patientName = patient?.full_name || "Patient";
     const firstName= patient?.first_name || "Patient";
+
+    const serviceRoutes = {
+        profile: "/patient-profile",
+        appointments: "/appointments",
+        invoice: "/invoices-receipts",
+        prescriptions: "/prescriptions",
+        billing: "/bill-payment",
+        deposit: "/deposit",
+        history: "/visit-history",
+        archived: "/archived-reports",
+        dicom: "/dicom",
+        grievances: "/grievances-feedback",
+        };
+
+        const goToService = (serviceId) => {
+        const route = serviceRoutes[serviceId];
+
+        if (route) {
+        window.location.href = route;
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col font-sans antialiased text-gray-800">
         
@@ -141,7 +167,7 @@ export default function HomePage() {
                 />
                 </div>
                 <div>
-                <span className="text-xs tracking-wider block font-light text-gray-300 uppercase">Patan Academy of Health Sciences</span>
+                <span className="text-xs tracking-wider block font-light text-gray-300 uppercase">{hospitalName}</span>
                 <span className="text-base sm:text-lg font-bold tracking-wide block leading-tight">Patient Portal</span>
                 </div>
             </div>
@@ -183,8 +209,11 @@ export default function HomePage() {
                 <p className="text-xs text-gray-300">Logged in as</p>
                 <p className="text-sm font-semibold text-white">{patientName} ({patientId})</p>
                 </div>
-                <button className="w-full bg-[#052f48] text-white py-2.5 rounded-lg text-sm font-medium">
-                Logout
+                <button
+                    onClick={handleLogout}
+                    className="w-full bg-[#052f48] text-white py-2.5 rounded-lg text-sm font-medium"
+                >
+                    Logout
                 </button>
             </div>
             )}
@@ -239,83 +268,61 @@ export default function HomePage() {
             </div>
 
             {/* 8-Card Responsive Grid Layout */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {services.map((service) => (
-                <div 
-                key={service.id}
-                onClick={()=>{
-                    if (service.id === "profile"){
-                        window.location.href ="/patient-profile";
-                    }
-                    if (service.id === "billing") {
-                        window.location.href = "/bill-payment";
-                    }
-                    if (service.id === "archived") {
-                        window.location.href = "/archived-reports";
-                    }
-                    if (service.id === "invoice") {
-                        window.location.href = "/invoices-receipts";
-                    }
-                    if (service.id === "prescriptions") {
-                        window.location.href = "/prescriptions";
-                    }
-                    if (service.id === "history") {
-                        window.location.href = "/visit-history";
-                    }
-                    if (service.id === "appointments") {
-                        window.location.href = "/appointments";
-                    }
-                    if (service.id === "dicom") {
-                        window.location.href = "/dicom";
-                    }
-                    if (service.id === "grievances") {
-                        window.location.href = "/grievances-feedback";
-                    }
-                    if (service.id === "deposit") {
-                        window.location.href = "/deposit";
-                    }
-                }}
-                className="bg-white rounded-xl shadow-sm border border-gray-200/80 hover:shadow-md hover:border-[#254a60]/30 transition-all duration-200 p-5 flex flex-col group cursor-pointer"
-                >
-                {/* Card Header (Icon & Title) */}
-                <div className="flex items-center gap-4 mb-3">
-                    <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-2xl border border-gray-100 group-hover:bg-[#254a60]/10 transition duration-200 shrink-0">
-                    {service.icon}
+            {/* Mobile Android-style app icon grid */}
+            <div className="grid grid-cols-4 gap-x-3 gap-y-6 sm:hidden">
+                {services.map((service) => (
+                    <button
+                    key={service.id}
+                    type="button"
+                    onClick={() => goToService(service.id)}
+                    className="flex flex-col items-center justify-start text-center active:scale-95 transition"
+                    >
+                    <div className="w-14 h-14 rounded-2xl bg-white border border-gray-200 shadow-sm flex items-center justify-center text-2xl mb-2">
+                        {service.icon}
                     </div>
-                    <h4 className="text-base font-bold text-[#052f48] group-hover:text-[#254a60] transition-colors leading-tight">
-                    {service.title}
-                    </h4>
+
+                    <span className="text-[11px] font-bold text-[#052f48] leading-tight line-clamp-2">
+                        {service.title}
+                    </span>
+                    </button>
+                ))}
                 </div>
 
-                {/* Card Body Description */}
-                <p className="text-xs sm:text-sm text-gray-500 font-normal leading-relaxed flex-1">
-                    {service.desc}
-                </p>
+                {/* Tablet/Desktop card grid */}
+                <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                {services.map((service) => (
+                    <div
+                    key={service.id}
+                    onClick={() => goToService(service.id)}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200/80 hover:shadow-md hover:border-[#254a60]/30 transition-all duration-200 p-5 flex flex-col group cursor-pointer"
+                    >
+                    <div className="flex items-center gap-4 mb-3">
+                        <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-2xl border border-gray-100 group-hover:bg-[#254a60]/10 transition duration-200 shrink-0">
+                        {service.icon}
+                        </div>
 
-                {/* Action Trigger Link */}
-                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs font-semibold text-[#254a60] group-hover:text-[#052f48]">
-                    <span>Access Feature</span>
-                    <span className="transform translate-x-0 group-hover:translate-x-1 transition-transform duration-200">➔</span>
-                </div>
-                </div>
-            ))}
+                        <h4 className="text-base font-bold text-[#052f48] group-hover:text-[#254a60] transition-colors leading-tight">
+                        {service.title}
+                        </h4>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-gray-500 font-normal leading-relaxed flex-1">
+                        {service.desc}
+                    </p>
+
+                    <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs font-semibold text-[#254a60] group-hover:text-[#052f48]">
+                        <span>Access Feature</span>
+                        <span className="transform translate-x-0 group-hover:translate-x-1 transition-transform duration-200">
+                        ➔
+                        </span>
+                    </div>
+                    </div>
+                ))}
             </div>
         </main>
 
         {/* 4. INSTITUTIONAL FOOTER */}
-        <footer className="bg-[#052f48] text-gray-400 text-xs py-6 mt-auto border-t border-white/5">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
-            <div>
-                <p className="font-semibold text-gray-300">Patan Academy of Health Sciences (PAHS)</p>
-                <p className="mt-0.5 font-light">Lagankhel, Lalitpur, Nepal | Tel: +977-1-5445112</p>
-            </div>
-            <div className="text-gray-400 font-light">
-                <a href="https://d-codetechnology.com/" className="text-white font-bold underline">
-                    &copy; 2026 D-Code Technology Pvt. Ltd. All rights reserved.
-                </a>
-            </div>
-            </div>
-        </footer>
+        <PageFooter/>
 
         </div>
     );

@@ -119,6 +119,9 @@ DATABASE_ROUTERS = [
     "config.db_routers.LegacyHMISRouter",
 ]
 
+#Patportal Settings
+HOSPITAL_NAME = os.getenv("HOSPITAL_NAME", "D-Code Technology Pvt. Ltd.").strip()
+HOSPITAL_ADDRESS = os.getenv("HOSPITAL_ADDRESS", "D-Code Technology Pvt. Ltd.").strip()
 
 # FTP Server
 

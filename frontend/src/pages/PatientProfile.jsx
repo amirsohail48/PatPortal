@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import hospitalLogo from "../assets/hospital-logo.png";
+import PageFooter from "../components/PageFooter";
+import PageHeader from "../components/PageHeader";
+
 
 export default function PatientProfile() {
   const [patient, setPatient] = useState(null);
@@ -91,37 +93,9 @@ export default function PatientProfile() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans antialiased text-gray-800">
       {/* TOP NAVBAR */}
-      <header className="bg-[#052f48] text-white shadow-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-white rounded-lg p-1 flex items-center justify-center shadow-sm shrink-0">
-              <img
-                src={hospitalLogo}
-                alt="PAHS Logo"
-                className="w-full h-full object-contain"
-              />
-            </div>
-
-            <div>
-              <span className="text-[10px] tracking-widest block font-light text-gray-300 uppercase">
-                Patan Academy of Health Sciences
-              </span>
-              <span className="text-base sm:text-lg font-bold tracking-wide block leading-tight">
-                Patient Portal
-              </span>
-            </div>
-          </div>
-
-          <button
-            onClick={() => {
-              window.location.href = "/home";
-            }}
-            className="bg-[#254a60] hover:bg-white/10 text-white border border-white/20 px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition"
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      </header>
+      <PageHeader
+              title="Patient Profile"
+            />
 
       {/* MAIN CONTAINER */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 box-border">
@@ -285,14 +259,7 @@ export default function PatientProfile() {
       </main>
 
       {/* FOOTER */}
-      <footer className="bg-[#052f48] text-gray-400 text-xs py-5 mt-auto border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center sm:flex sm:justify-between sm:items-center">
-          <p className="">Patan Academy of Health Science</p>
-          <a href="https://d-codetechnology.com/" className="text-white font-bold underline">
-            &copy; 2026 D-Code Technology Pvt. Ltd. All rights reserved.
-          </a>
-        </div>
-      </footer>
+      <PageFooter/>
     </div>
   );
 }

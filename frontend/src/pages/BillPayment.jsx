@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import hospitalLogo from "../assets/hospital-logo.png";
 import connectIPSLogo from "../assets/connectIPS.png";
 import esewaLogo from "../assets/esewa.png";
 import khalti from "../assets/khalti.png";
+import PageHeader from "../components/PageHeader";
+import PageFooter from "../components/PageFooter";
+
 
 
 
@@ -335,37 +337,9 @@ export default function BillPayment() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-800">
-      <header className="bg-[#052f48] text-white shadow-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white rounded-lg p-1 flex items-center justify-center shadow-sm">
-              <img
-                src={hospitalLogo}
-                alt="PAHS Logo"
-                className="w-full h-full object-contain"
-              />
-            </div>
-
-            <div>
-              <span className="text-xs tracking-wider block text-gray-300 uppercase">
-                Patan Academy of Health Sciences
-              </span>
-              <span className="text-base sm:text-lg font-bold block">
-                Bill Payment
-              </span>
-            </div>
-          </div>
-
-          <button
-            onClick={() => {
-              window.location.href = "/home";
-            }}
-            className="bg-[#254a60] hover:bg-white/10 text-white border border-white/20 px-4 py-2 rounded-lg text-xs sm:text-sm font-medium"
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      </header>
+      <PageHeader
+        title="Bill Payment"
+      />
 
       <section className="bg-gradient-to-r from-[#052f48] to-[#254a60] text-white py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
@@ -602,14 +576,7 @@ export default function BillPayment() {
         )}
       </main>
 
-      <footer className="bg-[#052f48] text-gray-400 text-xs py-5 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center sm:flex sm:justify-between">
-          <p>Patan Academy of Health Sciences</p>
-          <a href="https://d-codetechnology.com/" className="text-white font-bold underline">
-            &copy; 2026 D-Code Technology Pvt. Ltd. All rights reserved.
-          </a>
-        </div>
-      </footer>
+      <PageFooter/>
 
       {showPaymentModal && (
         <PaymentModeModal

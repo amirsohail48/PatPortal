@@ -1,5 +1,7 @@
 import { useState } from "react";
 import hospitalLogo from "../assets/hospital-logo.png";
+import PageHeader from "../components/PageHeader";
+
 
 function getCookie(name) {
   const cookies = document.cookie ? document.cookie.split("; ") : [];
