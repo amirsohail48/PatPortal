@@ -310,7 +310,9 @@ export default function HomePage() {
                 <p className="mt-0.5 font-light">Lagankhel, Lalitpur, Nepal | Tel: +977-1-5445112</p>
             </div>
             <div className="text-gray-400 font-light">
-                &copy; 2026 D-Code Technology Pvt. Ltd. All rights reserved.
+                <a href="https://d-codetechnology.com/" className="text-white font-bold underline">
+                    &copy; 2026 D-Code Technology Pvt. Ltd. All rights reserved.
+                </a>
             </div>
             </div>
         </footer>

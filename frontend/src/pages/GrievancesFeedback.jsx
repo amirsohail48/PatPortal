@@ -303,6 +303,15 @@ export default function GrievancesFeedback() {
           )}
         </section>
       </main>
+      {/* FOOTER */}
+      <footer className="bg-[#052f48] text-gray-400 text-xs py-5 mt-auto border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center sm:flex sm:justify-between sm:items-center">
+          <p className="">Patan Academy of Health Science</p>
+          <a href="https://d-codetechnology.com/" className="text-white font-bold underline">
+            &copy; 2026 D-Code Technology Pvt. Ltd. All rights reserved.
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }

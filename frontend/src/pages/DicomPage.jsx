@@ -138,9 +138,18 @@ export default function DicomPage() {
         throw new Error(data.error || "Failed to load DICOM studies");
       }
 
-      setStudies(data.studies || []);
+      const studyList = data.studies || [];
+
+      setStudies(studyList);
       setSelectedStudy(null);
       setSeries([]);
+
+      // Auto-load first DICOM image after studies are loaded
+      if (studyList.length > 0) {
+        setTimeout(() => {
+          fetchSeries(studyList[0]);
+        }, 100);
+      }
     } catch (err) {
       setError(err.message || "Something went wrong");
     } finally {
@@ -178,14 +187,21 @@ export default function DicomPage() {
     const init = async () => {
       try {
         setLoading(true);
+        setError("");
+
         const firstEncounter = await fetchEncounters();
 
+        // First show frontend
+        setLoading(false);
+
+        // Then load DICOM studies after page is already visible
         if (firstEncounter) {
-          await fetchStudies(firstEncounter);
+          setTimeout(() => {
+            fetchStudies(firstEncounter);
+          }, 100);
         }
       } catch (err) {
         setError(err.message || "Something went wrong");
-      } finally {
         setLoading(false);
       }
     };
@@ -204,14 +220,6 @@ export default function DicomPage() {
 
     await fetchStudies(encounterId);
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-[#052f48] font-bold">Loading DICOM images...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-800">
@@ -264,21 +272,27 @@ export default function DicomPage() {
               Encounter / Visit ID
             </label>
 
-            <select
-              value={selectedEncounter}
-              onChange={handleEncounterChange}
-              className="w-full rounded-lg px-3 py-3 bg-white text-[#052f48] font-semibold outline-none"
-            >
-              {encounters.length === 0 && (
-                <option value="">No encounter found</option>
-              )}
+            {loading ? (
+              <div className="w-full rounded-lg px-3 py-3 bg-white text-[#052f48] font-semibold">
+                Loading encounters...
+              </div>
+            ) : (
+              <select
+                value={selectedEncounter}
+                onChange={handleEncounterChange}
+                className="w-full rounded-lg px-3 py-3 bg-white text-[#052f48] font-semibold outline-none"
+              >
+                {encounters.length === 0 && (
+                  <option value="">No encounter found</option>
+                )}
 
-              {encounters.map((item) => (
-                <option key={item.encounter_id} value={item.encounter_id}>
-                  {item.encounter_id} {item.date ? `(${item.date})` : ""}
-                </option>
-              ))}
-            </select>
+                {encounters.map((item) => (
+                  <option key={item.encounter_id} value={item.encounter_id}>
+                    {item.encounter_id} {item.date ? `(${item.date})` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
       </section>
@@ -460,16 +474,24 @@ export default function DicomPage() {
                   >
                     <div className="h-56 bg-black flex items-center justify-center">
                       {item.first_instance_id ? (
-                        <img
-                          src={`/api/pacs/preview/${item.first_instance_id}/`}
-                          alt={item.description || "DICOM Preview"}
-                          className="max-h-full max-w-full object-contain"
-                        />
-                        
+                        <>
+                          <img
+                            src={`/api/pacs/preview/${item.first_instance_id}/`}
+                            alt={item.description || "DICOM Preview"}
+                            className="max-h-full max-w-full object-contain"
+                            onError={(event) => {
+                              event.currentTarget.style.display = "none";
+                              const errorText = event.currentTarget.parentElement.querySelector(".preview-error");
+                              if (errorText) errorText.classList.remove("hidden");
+                            }}
+                          />
+
+                          <span className="preview-error hidden text-white text-sm px-4 text-center">
+                            Image preview is currently unavailable. Please try again later.
+                          </span>
+                        </>
                       ) : (
-                        <span className="text-white text-sm">
-                          No preview available
-                        </span>
+                        <span className="text-white text-sm">No preview available</span>
                       )}
                     </div>
 
@@ -492,11 +514,13 @@ export default function DicomPage() {
           </section>
         </div>
       </main>
-
-      <footer className="bg-[#052f48] text-gray-400 text-xs py-5 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center sm:flex sm:justify-between">
-          <p>Patan Academy of Health Sciences</p>
-          <p className="mt-1 sm:mt-0">&copy; 2026 D-Code Technology Pvt. Ltd.</p>
+      {/* FOOTER */}
+      <footer className="bg-[#052f48] text-gray-400 text-xs py-5 mt-auto border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center sm:flex sm:justify-between sm:items-center">
+          <p className="">Patan Academy of Health Science</p>
+          <a href="https://d-codetechnology.com/" className="text-white font-bold underline">
+            &copy; 2026 D-Code Technology Pvt. Ltd. All rights reserved.
+          </a>
         </div>
       </footer>
     </div>

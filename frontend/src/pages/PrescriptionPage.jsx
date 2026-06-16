@@ -267,7 +267,9 @@ export default function PrescriptionPage() {
       <footer className="bg-[#052f48] text-gray-400 text-xs py-5 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center sm:flex sm:justify-between">
           <p>Patan Academy of Health Sciences</p>
-          <p className="mt-1 sm:mt-0">&copy; 2026 D-Code Technology Pvt. Ltd.</p>
+          <a href="https://d-codetechnology.com/" className="text-white font-bold underline">
+            &copy; 2026 D-Code Technology Pvt. Ltd. All rights reserved.
+          </a>
         </div>
       </footer>
     </div>

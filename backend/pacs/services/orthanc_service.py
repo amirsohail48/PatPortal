@@ -4,9 +4,20 @@ import os
 import time
 from pathlib import Path
 
+import logging
+import requests
+
 import requests
 from django.conf import settings
 
+logger = logging.getLogger(__name__)
+
+class PacsServiceUnavailable(Exception):
+    pass
+
+
+class PacsRequestTimeout(Exception):
+    pass
 
 def orthanc_auth():
     if settings.ORTHANC_USERNAME and settings.ORTHANC_PASSWORD:
@@ -18,18 +29,51 @@ def orthanc_auth():
 def orthanc_request(method, path, **kwargs):
     url = f"{settings.ORTHANC_BASE_URL}{path}"
 
-    response = requests.request(
-        method=method,
-        url=url,
-        auth=orthanc_auth(),
-        timeout=60,
-        **kwargs,
-    )
+    try:
+        response = requests.request(
+            method=method,
+            url=url,
+            auth=orthanc_auth(),
+            timeout=getattr(settings, "ORTHANC_TIMEOUT", 60),
+            **kwargs,
+        )
 
-    if response.status_code >= 400:
-        raise RuntimeError(f"Orthanc error {response.status_code}: {response.text}")
+        if response.status_code >= 400:
+            logger.error(
+                "Orthanc returned error. status=%s url=%s response=%s",
+                response.status_code,
+                url,
+                response.text,
+            )
+            raise PacsServiceUnavailable(
+                "Unable to load DICOM images at the moment. Please try again later."
+            )
 
-    return response
+        return response
+
+    except requests.exceptions.ConnectTimeout:
+        logger.exception("PACS connection timeout. url=%s", url)
+        raise PacsRequestTimeout(
+            "PACS imaging server is currently unavailable. Please try again later or contact the Radiology/PACS support team."
+        )
+
+    except requests.exceptions.ReadTimeout:
+        logger.exception("PACS read timeout. url=%s", url)
+        raise PacsRequestTimeout(
+            "PACS imaging server did not respond in time. Please try again later."
+        )
+
+    except requests.exceptions.ConnectionError:
+        logger.exception("PACS connection error. url=%s", url)
+        raise PacsServiceUnavailable(
+            "Unable to connect to the PACS imaging server. Please try again later or contact the Radiology/PACS support team."
+        )
+
+    except requests.exceptions.RequestException:
+        logger.exception("Unexpected PACS request error. url=%s", url)
+        raise PacsServiceUnavailable(
+            "Unable to load DICOM images at the moment. Please try again later."
+        )
 
 
 def find_studies_by_tag(tag_name, value):

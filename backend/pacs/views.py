@@ -7,6 +7,8 @@ from pacs.services.orthanc_service import (
     get_study_series,
     get_cached_instance_preview,
 )
+from pacs.services.orthanc_service import PacsServiceUnavailable, PacsRequestTimeout
+
 
 
 def format_datetime(value):
@@ -93,10 +95,22 @@ def pacs_studies_api(request):
             "studies": studies,
         })
 
-    except Exception as error:
+    except PacsRequestTimeout as error:
         return JsonResponse({
             "success": False,
             "error": str(error),
+        }, status=504)
+
+    except PacsServiceUnavailable as error:
+        return JsonResponse({
+            "success": False,
+            "error": str(error),
+        }, status=503)
+
+    except Exception:
+        return JsonResponse({
+            "success": False,
+            "error": "Unable to load DICOM studies at the moment. Please try again later.",
         }, status=400)
 
 
@@ -117,10 +131,22 @@ def pacs_series_api(request, study_id):
             "series": series,
         })
 
-    except Exception as error:
+    except PacsRequestTimeout as error:
         return JsonResponse({
             "success": False,
             "error": str(error),
+        }, status=504)
+
+    except PacsServiceUnavailable as error:
+        return JsonResponse({
+            "success": False,
+            "error": str(error),
+        }, status=503)
+
+    except Exception:
+        return JsonResponse({
+            "success": False,
+            "error": "Unable to load DICOM series at the moment. Please try again later.",
         }, status=400)
 
 
@@ -146,8 +172,20 @@ def pacs_preview_api(request, instance_id):
 
         return response
 
-    except Exception as error:
+    except PacsRequestTimeout:
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "Image preview is currently unavailable. Please try again later.",
+        }, status=504)
+
+    except PacsServiceUnavailable:
+        return JsonResponse({
+            "success": False,
+            "error": "Image preview is currently unavailable. Please try again later.",
+        }, status=503)
+
+    except Exception:
+        return JsonResponse({
+            "success": False,
+            "error": "Unable to load image preview at the moment.",
         }, status=400)
