@@ -155,6 +155,7 @@ export default function BillPayment() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPendingBills();
   }, []);
 

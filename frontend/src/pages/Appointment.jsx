@@ -175,18 +175,6 @@ export default function AppointmentPage() {
     }));
   }, [quotas]);
 
-  const consultantOptions = useMemo(() => {
-    if (!selectedDepartment) {
-      return [];
-    }
-
-    const departmentRows = quotas.filter(
-      (item) => item.department === selectedDepartment
-    );
-
-    return buildConsultantOptions(departmentRows);
-  }, [quotas, selectedDepartment]);
-
   const availableSlots = useMemo(() => {
     return quotas
       .filter((item) => {
@@ -210,13 +198,36 @@ export default function AppointmentPage() {
         return firstKey.localeCompare(secondKey);
       });
   }, [quotas, selectedDepartment, selectedConsultant]);
+  
+  const loadQuotaOptions = async (params = {}) => {
+    const response = await fetch(
+      `/api/appointments/quota-options/${buildQuery(params)}`,
+      {
+        credentials: "include",
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.status === 401 || response.status === 403) {
+      window.location.href = "/login";
+      return [];
+    }
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || "Failed to load appointment options");
+    }
+
+    return data.quotas || [];
+  };
 
   const initializePage = async () => {
     try {
       setLoading(true);
       setError("");
-
+      
       const initialQuotas = await loadQuotaOptions({});
+
       setQuotas(initialQuotas);
       setGroupOptions(buildGroupOptions(initialQuotas));
     } catch (err) {
@@ -227,25 +238,10 @@ export default function AppointmentPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     initializePage();
   }, []);
 
-  const loadQuotaOptions = async (params) => {
-    const response = await fetch(
-      `/api/appointments/quota-options/${buildQuery(params)}`,
-      {
-        method: "GET",
-        credentials: "include",
-      }
-    );
-
-    const data = await readJsonResponse(
-      response,
-      "Failed to load appointment quota options."
-    );
-
-    return data?.quotas || [];
-  };
 
   const handleSelectGroup = async (group) => {
     try {
@@ -378,7 +374,7 @@ export default function AppointmentPage() {
       setSelectedGroup("");
       setSelectedScheme("");
       setSelectedDepartment("");
-      selectedConsultant("");
+      setSelectedConsultant("");
       setSelectedQuotaId("");
 
       const initialQuotas = await loadQuotaOptions({});
@@ -412,6 +408,14 @@ export default function AppointmentPage() {
       item_cost: selectedQuota?.item_cost,
     };
   };
+
+  const consultantOptions = useMemo(() => {
+  if (!selectedGroup || !selectedScheme || !selectedDepartment) {
+    return [];
+  }
+
+  return buildConsultantOptions(quotas);
+}, [quotas, selectedGroup, selectedScheme, selectedDepartment]);
 
   const handleSubmitAppointment = () => {
     if (!selectedGroup) {
@@ -929,7 +933,7 @@ function StepProgress({
 
   return (
     <div className="mb-6 bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {steps.map((step, index) => (
           <div
             key={step.label}
@@ -1142,6 +1146,7 @@ function AppointmentPreviewModal({
   selectedGroup,
   selectedScheme,
   selectedDepartment,
+  selectedConsultant,
   onClose,
   onProceed,
 }) {
@@ -1171,7 +1176,12 @@ function AppointmentPreviewModal({
           <PreviewRow label="Department" value={selectedDepartment} />
           <PreviewRow
             label="Consultant"
-            value={selectedQuota?.consultant || "Any Consultant"}
+            value={
+              selectedQuota?.consultant_name ||
+              selectedQuota?.consultant ||
+              selectedConsultant ||
+              "Any Consultant"
+            }
           />
           <PreviewRow
             label="Date"
