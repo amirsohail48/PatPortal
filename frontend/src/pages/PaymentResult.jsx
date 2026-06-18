@@ -1,22 +1,7 @@
 import { useEffect, useState } from "react";
 import hospitalLogo from "../assets/hospital-logo.png";
 import PageHeader from "../components/PageHeader";
-
-
-function getCookie(name) {
-  const cookies = document.cookie ? document.cookie.split("; ") : [];
-
-  for (const cookie of cookies) {
-    const parts = cookie.split("=");
-    const key = decodeURIComponent(parts[0]);
-
-    if (key === name) {
-      return decodeURIComponent(parts.slice(1).join("="));
-    }
-  }
-
-  return "";
-}
+import { getCookie } from "../utils/cookie";
 
 function decodeEsewaData(encodedData) {
   if (!encodedData) {
@@ -27,8 +12,7 @@ function decodeEsewaData(encodedData) {
     const normalized = encodedData.replace(/-/g, "+").replace(/_/g, "/");
     const decodedText = atob(normalized);
     return JSON.parse(decodedText);
-  } catch (error) {
-    console.error("Failed to decode eSewa response:", error);
+  } catch {
     return null;
   }
 }
@@ -41,7 +25,6 @@ async function readJsonResponse(response, defaultErrorMessage) {
   try {
     data = JSON.parse(text);
   } catch {
-    console.error("Server returned non-JSON response:", text);
     throw new Error(defaultErrorMessage || "Server returned invalid response.");
   }
 
@@ -58,23 +41,23 @@ async function readJsonResponse(response, defaultErrorMessage) {
 }
 
 function getStoredPaymentType() {
-  return localStorage.getItem("latest_payment_type") || "";
+  return sessionStorage.getItem("latest_payment_type") || "";
 }
 
 function getStoredPaymentGateway() {
-  return localStorage.getItem("latest_payment_gateway") || "";
+  return sessionStorage.getItem("latest_payment_gateway") || "";
 }
 
 function clearPaymentStorage(paymentType) {
-  localStorage.removeItem("latest_payment_id");
-  localStorage.removeItem("latest_payment_gateway");
+  sessionStorage.removeItem("latest_payment_id");
+  sessionStorage.removeItem("latest_payment_gateway");
 
   if (paymentType === "APPOINTMENT") {
-    localStorage.removeItem("latest_payment_type");
-    localStorage.removeItem("latest_appointment_booking_id");
-    localStorage.removeItem("latest_appointment_payload");
-    localStorage.removeItem("last_connectips_payment_id");
-    localStorage.removeItem("last_connectips_txn_id");
+    sessionStorage.removeItem("latest_payment_type");
+    sessionStorage.removeItem("latest_appointment_booking_id");
+    sessionStorage.removeItem("latest_appointment_payload");
+    sessionStorage.removeItem("last_connectips_payment_id");
+    sessionStorage.removeItem("last_connectips_txn_id");
   }
 }
 
@@ -174,7 +157,7 @@ export default function PaymentResult() {
   };
 
   const checkEsewaIntentStatus = async () => {
-    const paymentId = localStorage.getItem("latest_payment_id");
+    const paymentId = sessionStorage.getItem("latest_payment_id");
 
     if (!paymentId) {
       setStatus("FAILED");
@@ -224,8 +207,8 @@ export default function PaymentResult() {
   const validateConnectIPSStatus = async (txnIdFromUrl = "") => {
     const txnId =
       txnIdFromUrl ||
-      localStorage.getItem("last_connectips_txn_id") ||
-      localStorage.getItem("TXNID");
+      sessionStorage.getItem("last_connectips_txn_id") ||
+      sessionStorage.getItem("TXNID");
 
     if (!txnId) {
       setStatus("FAILED");
@@ -304,7 +287,6 @@ export default function PaymentResult() {
           throw new Error("Invalid eSewa response data.");
         }
 
-        console.log("Decoded eSewa ePay response:", decodedData);
         setGatewayResponse(decodedData);
 
         await verifyEpayPayment(decodedData);
@@ -318,7 +300,6 @@ export default function PaymentResult() {
 
       await checkEsewaIntentStatus();
     } catch (error) {
-      console.error(error);
       setStatus("FAILED");
       setMessage(error.message || "Payment verification failed.");
     }

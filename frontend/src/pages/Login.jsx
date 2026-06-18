@@ -1,38 +1,22 @@
 import { useEffect, useState } from "react";
 import hospitalLogo from "../assets/hospital-logo.png";
 import loginBg from "../assets/pahsbg.jpeg";
-
-function getCookie(name) {
-  const cookies = document.cookie ? document.cookie.split("; ") : [];
-
-  for (const cookie of cookies) {
-    const parts = cookie.split("=");
-    const key = decodeURIComponent(parts[0]);
-
-    if (key === name) {
-      return decodeURIComponent(parts.slice(1).join("="));
-    }
-  }
-
-  return "";
-}
+import { getCookie } from "../utils/cookie";
 
 export default function Login() {
   const [patientId, setPatientId] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [error, setError] = useState("");
 
-  // Detect screen size
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 768);
     };
 
     checkScreenSize();
-
     window.addEventListener("resize", checkScreenSize);
-
     return () => {
       window.removeEventListener("resize", checkScreenSize);
     };
@@ -40,6 +24,7 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
     try {
       const csrfResponse = await fetch("/api/csrf/", {
@@ -47,14 +32,10 @@ export default function Login() {
         credentials: "include",
       });
 
-      const csrfText = await csrfResponse.text();
-
       let csrfData;
-
       try {
-        csrfData = JSON.parse(csrfText);
+        csrfData = await csrfResponse.json();
       } catch {
-        console.error("CSRF returned non-JSON:", csrfText);
         throw new Error("CSRF API returned invalid response");
       }
 
@@ -73,30 +54,24 @@ export default function Login() {
         }),
       });
 
-      const text = await response.text();
-
       let data;
-
       try {
-        data = JSON.parse(text);
+        data = await response.json();
       } catch {
-        console.error("LOGIN STATUS:", response.status);
-        console.error("LOGIN RETURNED HTML/TEXT:", text);
         throw new Error("Server returned invalid response");
       }
 
       if (!response.ok || !data.success) {
-        alert(data.error || "Login failed");
+        setError(data.error || "Login failed");
         return;
       }
 
-      localStorage.setItem("patient_id", data.patient_id);
       window.location.href = "/home";
     } catch (error) {
-      console.error(error);
-      alert(error.message || "Server connection failed");
+      setError(error.message || "Server connection failed");
     }
   };
+
   return (
     <div
       className="min-h-screen w-full flex items-center justify-center px-4 py-8 overflow-hidden relative bg-cover bg-center bg-no-repeat"
@@ -117,6 +92,7 @@ export default function Login() {
           showPassword={showPassword}
           setShowPassword={setShowPassword}
           handleSubmit={handleSubmit}
+          error={error}
         />
       ) : (
         <DesktopLoginView
@@ -128,6 +104,7 @@ export default function Login() {
           showPassword={showPassword}
           setShowPassword={setShowPassword}
           handleSubmit={handleSubmit}
+          error={error}
         />
       )}
       </div>
@@ -144,10 +121,10 @@ function DesktopLoginView({
   showPassword,
   setShowPassword,
   handleSubmit,
+  error,
 }) {
   return (
     <div className="relative w-full max-w-7xl flex items-center justify-center">
-
             <LoginCard
               logo={logo}
               patientId={patientId}
@@ -158,8 +135,8 @@ function DesktopLoginView({
               setShowPassword={setShowPassword}
               handleSubmit={handleSubmit}
               isMobile={false}
+              error={error}
             />
-
     </div>
   );
 }
@@ -173,6 +150,7 @@ function MobileLoginView({
   showPassword,
   setShowPassword,
   handleSubmit,
+  error,
 }) {
   return (
       <div className="w-full max-w-md bg-[#254a60]/95 rounded-3xl overflow-hidden px-5 pt-16 pb-6 flex items-center justify-center shadow-2xl">
@@ -186,6 +164,7 @@ function MobileLoginView({
           setShowPassword={setShowPassword}
           handleSubmit={handleSubmit}
           isMobile={true}
+          error={error}
         />
       </div>
   );
@@ -201,6 +180,7 @@ function LoginCard({
   setShowPassword,
   handleSubmit,
   isMobile,
+  error,
 }) {
   return (
     <div
@@ -236,6 +216,13 @@ function LoginCard({
             Patient Portal
           </p>
       </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="w-full mb-4 bg-red-500/20 border border-red-400 text-red-200 rounded-lg px-4 py-3 text-sm font-semibold">
+          {error}
+        </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="w-full space-y-4">

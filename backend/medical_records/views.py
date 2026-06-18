@@ -1,7 +1,11 @@
+import logging
+
 from django.http import JsonResponse, Http404, HttpResponse
 from django.views.decorators.http import require_GET
 from legacy_hmis.models import Tblencounter
 from weasyprint import HTML
+
+logger = logging.getLogger(__name__)
 
 from patients.services.encounter_service import (
     get_patient_encounters,
@@ -35,10 +39,11 @@ def patient_encounters_api(request):
             "encounters": encounters,
         })
 
-    except Exception as error:
+    except Exception:
+        logger.exception("patient_encounters_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 
@@ -72,10 +77,11 @@ def archived_reports_api(request):
             "error": str(error),
         }, status=403)
 
-    except Exception as error:
+    except Exception:
+        logger.exception("archived_reports_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 
@@ -125,12 +131,11 @@ def report_file_api(request, report_id):
             "error": str(error),
         }, status=404)
 
-    except Exception as error:
-        print("REPORT FILE API ERROR:", repr(error))
-
+    except Exception:
+        logger.exception("report_file_api failed report_id=%s", report_id)
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
     
 @require_GET
@@ -150,10 +155,11 @@ def clinical_encounters_api(request):
             "encounters": get_patient_encounters(patient_id),
         })
 
-    except Exception as error:
+    except Exception:
+        logger.exception("clinical_encounters_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 
@@ -182,10 +188,11 @@ def clinical_summary_api(request):
             "error": str(error),
         }, status=403)
 
-    except Exception as error:
+    except Exception:
+        logger.exception("clinical_summary_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 
@@ -232,8 +239,9 @@ def clinical_summary_download_api(request):
             "error": str(error),
         }, status=403)
 
-    except Exception as error:
+    except Exception:
+        logger.exception("clinical_summary_download_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)

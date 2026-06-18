@@ -1,22 +1,7 @@
 import { useEffect, useState } from "react";
 import PageHeader from "../components/PageHeader";
 import PageFooter from "../components/PageFooter";
-
-
-function getCookie(name) {
-  const cookies = document.cookie ? document.cookie.split("; ") : [];
-
-  for (const cookie of cookies) {
-    const parts = cookie.split("=");
-    const key = decodeURIComponent(parts[0]);
-
-    if (key === name) {
-      return decodeURIComponent(parts.slice(1).join("="));
-    }
-  }
-
-  return "";
-}
+import { getCookie } from "../utils/cookie";
 
 function getStatusStyle(status) {
   const normalized = String(status || "").toLowerCase();
@@ -69,8 +54,7 @@ export default function GrievancesFeedback() {
         try {
         data = JSON.parse(text);
         } catch {
-        console.error("Grievance API returned non-JSON:", text);
-        throw new Error("Server returned invalid response. Check Django terminal.");
+        throw new Error("Server returned invalid response.");
         }
 
         if (response.status === 401 || response.status === 403) {

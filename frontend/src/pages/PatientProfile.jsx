@@ -25,7 +25,6 @@ export default function PatientProfile() {
         try {
         data = JSON.parse(text);
         } catch {
-        console.error("Server returned non-JSON:", text);
         throw new Error("Server returned invalid response");
         }
 

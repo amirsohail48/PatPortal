@@ -3,22 +3,7 @@ import hospitalLogo from "../assets/hospital-logo.png";
 import pahsImage from "../assets/pahs1.jpeg";
 import PageHeader from "../components/PageHeader";
 import PageFooter from "../components/PageFooter";
-
-
-function getCookie(name) {
-  const cookies = document.cookie ? document.cookie.split("; ") : [];
-
-  for (const cookie of cookies) {
-    const parts = cookie.split("=");
-    const key = decodeURIComponent(parts[0]);
-
-    if (key === name) {
-      return decodeURIComponent(parts.slice(1).join("="));
-    }
-  }
-
-  return "";
-}
+import { getCookie } from "../utils/cookie";
 
 export default function HomePage() {
     const [hospitalName, setHospitalName] = useState("D-Code technology Pvt. Ltd.");
@@ -26,6 +11,7 @@ export default function HomePage() {
     const [patient, setPatient] = useState("");
     const [currentDeposit, setCurrentDeposit] = useState("0.00");
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [logoutError, setLogoutError] = useState("");
 
     const fetchCurrentDeposit = async () => {
         try {
@@ -102,14 +88,13 @@ export default function HomePage() {
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-            alert(data.error || "Logout failed");
+            setLogoutError(data.error || "Logout failed");
             return;
             }
 
             window.location.href = "/login";
-        } catch (error) {
-            console.error("Logout error:", error);
-            alert("Logout failed. Please try again.");
+        } catch {
+            setLogoutError("Logout failed. Please try again.");
         }
         };
 
@@ -260,7 +245,11 @@ export default function HomePage() {
 
         {/* 3. MAIN DASHBOARD CONTENT */}
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 box-border">
-            
+            {logoutError && (
+              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm font-semibold">
+                {logoutError}
+              </div>
+            )}
             {/* Section Title */}
             <div className="mb-6">
             <h3 className="text-lg font-bold text-[#052f48] uppercase tracking-wider">Patient Services</h3>

@@ -1,10 +1,15 @@
 import base64
 import hmac
 import hashlib
+import logging
 import os
 import requests
 from decimal import Decimal
 from typing import Any
+
+from payments.exceptions import GatewayError
+
+logger = logging.getLogger(__name__)
 
 
 ESEWA_PRODUCT_CODE = os.getenv("ESEWA_INTENT_PRODUCT_CODE", "INTENT").strip()
@@ -64,11 +69,10 @@ def generate_signature(payload, signed_field_names):
 
     message = build_signature_message(payload, signed_field_names)
 
-    print("========== ESEWA SIGNATURE DEBUG ==========")
-    print("SIGNED FIELD NAMES:", signed_field_names)
-    print("SIGNATURE MESSAGE:", message)
-    print("PRODUCT CODE:", ESEWA_PRODUCT_CODE)
-    print("ACCESS KEY LENGTH:", len(ESEWA_ACCESS_KEY))
+    logger.debug(
+        "eSewa signature | fields=%s message=%s product=%s",
+        signed_field_names, message, ESEWA_PRODUCT_CODE,
+    )
 
     digest = hmac.new(
         ESEWA_ACCESS_KEY.encode("utf-8"),
@@ -77,9 +81,6 @@ def generate_signature(payload, signed_field_names):
     ).digest()
 
     signature = base64.b64encode(digest).decode("utf-8")
-
-    print("GENERATED SIGNATURE:", signature)
-    print("===========================================")
 
     return signature
 
@@ -115,8 +116,7 @@ def book_intent_payment(amount, transaction_uuid, customer_id, remarks) -> tuple
 
     payload["signature"] = generate_signature(payload, signed_field_names)
 
-    print("========== ESEWA BOOK PAYLOAD ==========")
-    print(payload)
+    logger.debug("eSewa book payload transaction_uuid=%s", transaction_uuid)
 
     response = requests.post(
         ESEWA_BOOK_URL,
@@ -133,17 +133,17 @@ def book_intent_payment(amount, transaction_uuid, customer_id, remarks) -> tuple
     except Exception:
         response_data = {"raw": response.text}
 
-    print("========== ESEWA BOOK RESPONSE ==========")
-    print("STATUS CODE:", response.status_code)
-    print("RESPONSE:", response_data)
-
     if response.status_code >= 400:
-        raise RuntimeError(str(response_data))
+        logger.error("eSewa book failed status=%s body=%s", response.status_code, response_data)
+        if response.status_code in (502, 503, 504):
+            raise GatewayError("eSewa payment service is temporarily unavailable. Please try again later.")
+        raise GatewayError("eSewa payment initiation failed. Please try again.")
 
     success_codes = ["IP-200", "IP-201"]
 
     if response_data.get("code") not in success_codes:
-        raise RuntimeError(str(response_data))
+        logger.error("eSewa book unexpected code status=%s body=%s", response.status_code, response_data)
+        raise GatewayError("eSewa payment initiation failed. Please try again.")
 
     return payload, response_data
 
@@ -175,14 +175,11 @@ def check_intent_status(booking_id, correlation_id):
     except Exception:
         response_data = {"raw": response.text}
 
-    print("========== ESEWA STATUS PAYLOAD ==========")
-    print(payload)
-    print("========== ESEWA STATUS RESPONSE ==========")
-    print("STATUS CODE:", response.status_code)
-    print("RESPONSE:", response_data)
-
     if response.status_code >= 400:
-        raise RuntimeError(str(response_data))
+        logger.error("eSewa status check failed status=%s body=%s", response.status_code, response_data)
+        if response.status_code in (502, 503, 504):
+            raise GatewayError("eSewa payment service is temporarily unavailable. Please try again later.")
+        raise GatewayError("eSewa payment status check failed. Please try again.")
 
     return payload, response_data
 
@@ -211,10 +208,7 @@ def generate_epay_signature(total_amount, transaction_uuid, product_code):
         f"product_code={product_code}"
     )
 
-    print("========== ESEWA EPAY SIGNATURE DEBUG ==========")
-    print("SIGNATURE MESSAGE:", message)
-    print("PRODUCT CODE:", product_code)
-    print("SECRET KEY LENGTH:", len(ESEWA_EPAY_SECRET_KEY))
+    logger.debug("eSewa ePay signature | product=%s message=%s", product_code, message)
 
     digest = hmac.new(
         ESEWA_EPAY_SECRET_KEY.encode("utf-8"),
@@ -223,9 +217,6 @@ def generate_epay_signature(total_amount, transaction_uuid, product_code):
     ).digest()
 
     signature = base64.b64encode(digest).decode("utf-8")
-
-    print("GENERATED EPAY SIGNATURE:", signature)
-    print("================================================")
 
     return signature
 
@@ -272,10 +263,37 @@ def build_epay_v2_form_fields(
         product_code=fields["product_code"],
     )
 
-    print("========== ESEWA EPAY FORM FIELDS ==========")
-    print(fields)
-
     return {
         "action_url": ESEWA_EPAY_FORM_URL,
         "fields": fields,
     }
+
+
+def verify_epay_response_signature(payload):
+    """
+    Verifies the HMAC-SHA256 signature on eSewa ePay V2 redirect/response data.
+    Uses ESEWA_EPAY_SECRET_KEY (different from the Intent access key).
+    """
+    signed_field_names = payload.get("signed_field_names", "")
+    if not signed_field_names:
+        return False
+
+    received_signature = payload.get("signature", "")
+    if not received_signature:
+        return False
+
+    if not ESEWA_EPAY_SECRET_KEY:
+        raise ValueError("ESEWA_EPAY_SECRET_KEY is missing or not loaded")
+
+    fields = [f.strip() for f in signed_field_names.split(",")]
+    message = ",".join(f"{field}={payload.get(field, '')}" for field in fields)
+
+    digest = hmac.new(
+        ESEWA_EPAY_SECRET_KEY.encode("utf-8"),
+        message.encode("utf-8"),
+        hashlib.sha256,
+    ).digest()
+
+    expected_signature = base64.b64encode(digest).decode("utf-8")
+
+    return hmac.compare_digest(received_signature, expected_signature)

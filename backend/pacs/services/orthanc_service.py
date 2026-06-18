@@ -145,6 +145,24 @@ def format_study(study):
     }
 
 
+def get_study_by_id(study_id):
+    response = orthanc_request("GET", f"/studies/{study_id}")
+    return response.json()
+
+
+def get_study_for_instance(instance_id):
+    """Resolves instance → series → study, returning the study dict."""
+    instance_resp = orthanc_request("GET", f"/instances/{instance_id}")
+    series_id = instance_resp.json().get("ParentSeries")
+    if not series_id:
+        raise PacsServiceUnavailable("Unable to determine image ownership")
+    series_resp = orthanc_request("GET", f"/series/{series_id}")
+    study_id = series_resp.json().get("ParentStudy")
+    if not study_id:
+        raise PacsServiceUnavailable("Unable to determine image ownership")
+    return get_study_by_id(study_id)
+
+
 def get_study_series(study_id):
     response = orthanc_request("GET", f"/studies/{study_id}/series")
     series_list = response.json()
@@ -205,8 +223,8 @@ def cleanup_old_cached_previews():
             if file_age > ttl_seconds:
                 file_path.unlink(missing_ok=True)
 
-        except Exception as error:
-            print("PACS cache cleanup error:", error)
+        except Exception:
+            logger.exception("PACS cache cleanup error path=%s", file_path)
 
 
 def get_existing_cached_preview(cache_key):

@@ -1,4 +1,5 @@
 import base64
+import logging
 import uuid
 from decimal import Decimal
 from datetime import datetime
@@ -9,6 +10,10 @@ from django.conf import settings
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.serialization import pkcs12
+
+from payments.exceptions import GatewayError
+
+logger = logging.getLogger(__name__)
 
 
 def amount_to_paisa(amount):
@@ -191,7 +196,10 @@ def validate_connectips_transaction(reference_id, amount_paisa):
         data = {"raw": response.text}
 
     if response.status_code >= 400:
-        raise RuntimeError(str(data))
+        logger.error("connectIPS validate failed status=%s body=%s", response.status_code, data)
+        if response.status_code in (502, 503, 504):
+            raise GatewayError("connectIPS payment service is temporarily unavailable. Please try again later.")
+        raise GatewayError("connectIPS payment validation failed. Please try again.")
 
     return payload, data
 
@@ -234,6 +242,9 @@ def get_connectips_transaction_detail(reference_id, amount_paisa):
         data = {"raw": response.text}
 
     if response.status_code >= 400:
-        raise RuntimeError(str(data))
+        logger.error("connectIPS txn detail failed status=%s body=%s", response.status_code, data)
+        if response.status_code in (502, 503, 504):
+            raise GatewayError("connectIPS payment service is temporarily unavailable. Please try again later.")
+        raise GatewayError("connectIPS transaction detail fetch failed. Please try again.")
 
     return payload, data

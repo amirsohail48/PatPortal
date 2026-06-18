@@ -1,22 +1,7 @@
 import { useState } from "react";
 import hospitalLogo from "../assets/hospital-logo.png";
 import PageHeader from "../components/PageHeader";
-
-
-function getCookie(name) {
-  const cookies = document.cookie ? document.cookie.split("; ") : [];
-
-  for (const cookie of cookies) {
-    const parts = cookie.split("=");
-    const key = decodeURIComponent(parts[0]);
-
-    if (key === name) {
-      return decodeURIComponent(parts.slice(1).join("="));
-    }
-  }
-
-  return "";
-}
+import { getCookie } from "../utils/cookie";
 
 export default function ChangePassword() {
   const [currentPassword, setCurrentPassword] = useState("");

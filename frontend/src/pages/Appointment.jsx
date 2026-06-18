@@ -3,6 +3,7 @@ import esewaLogo from "../assets/esewa.png"
 import connectipsLogo from "../assets/connectIPS.png"
 import khaltiLogo from "../assets/khaltiLogo.png"
 import PageHeader from "../components/PageHeader";
+import { getCookie } from "../utils/cookie";
 import PageFooter from "../components/PageFooter";
 
 const GROUP_DESCRIPTIONS = {
@@ -11,21 +12,6 @@ const GROUP_DESCRIPTIONS = {
   PPC: "Private clinic with higher price started from 8:00 AM - 16:00 every day except Wednesday & Saturday.",
   PPP: "Private clinic with higher price started from 16:00 - 19:00 every day except Wednesday & Saturday. Wednesday PPP is 8:00 - 12:00 noon.",
 };
-
-function getCookie(name) {
-  const cookies = document.cookie ? document.cookie.split("; ") : [];
-
-  for (const cookie of cookies) {
-    const parts = cookie.split("=");
-    const key = decodeURIComponent(parts[0]);
-
-    if (key === name) {
-      return decodeURIComponent(parts.slice(1).join("="));
-    }
-  }
-
-  return "";
-}
 
 async function getCsrfToken() {
   const existingToken = getCookie("csrftoken");
@@ -55,7 +41,6 @@ async function readJsonResponse(response, defaultErrorMessage) {
   try {
     data = JSON.parse(text);
   } catch {
-    console.error("Server returned non-JSON response:", text);
     throw new Error(defaultErrorMessage || "Server returned invalid response.");
   }
 
@@ -419,33 +404,34 @@ export default function AppointmentPage() {
 }, [quotas, selectedGroup, selectedScheme, selectedDepartment]);
 
   const handleSubmitAppointment = () => {
+    setError("");
     if (!selectedGroup) {
-      alert("Please select group.");
+      setError("Please select group.");
       return;
     }
 
     if (!selectedScheme) {
-      alert("Please select scheme.");
+      setError("Please select scheme.");
       return;
     }
 
     if (!selectedDepartment) {
-      alert("Please select department.");
+      setError("Please select department.");
       return;
     }
 
     if (consultantOptions.length > 0 && !selectedConsultant) {
-      alert("Please select consultant.");
+      setError("Please select consultant.");
       return;
     }
 
     if (!selectedQuota) {
-      alert("Please select appointment date/slot.");
+      setError("Please select appointment date/slot.");
       return;
     }
 
     if (Number(selectedQuota.remaining_slots || 0) <= 0) {
-      alert("No slot available for selected appointment.");
+      setError("No slot available for selected appointment.");
       return;
     }
 
@@ -477,14 +463,14 @@ export default function AppointmentPage() {
 
     if (!data) return;
 
-    localStorage.setItem("latest_payment_id", String(data.payment_id || ""));
-    localStorage.setItem("latest_payment_type", "APPOINTMENT");
-    localStorage.setItem("latest_payment_gateway", "ESEWA");
-    localStorage.setItem(
+    sessionStorage.setItem("latest_payment_id", String(data.payment_id || ""));
+    sessionStorage.setItem("latest_payment_type", "APPOINTMENT");
+    sessionStorage.setItem("latest_payment_gateway", "ESEWA");
+    sessionStorage.setItem(
       "latest_appointment_booking_id",
       String(data.appointment_booking_id || "")
     );
-    localStorage.setItem(
+    sessionStorage.setItem(
       "latest_appointment_payload",
       JSON.stringify(data.appointment || appointmentPayload)
     );
@@ -534,11 +520,11 @@ export default function AppointmentPage() {
 
     if (!data) return;
 
-    localStorage.setItem("last_connectips_payment_id", String(data.payment_id || ""));
-    localStorage.setItem("last_connectips_txn_id", String(data.txn_id || ""));
-    localStorage.setItem("latest_payment_type", "APPOINTMENT");
-    localStorage.setItem("latest_payment_gateway", "CONNECTIPS");
-    localStorage.setItem(
+    sessionStorage.setItem("last_connectips_payment_id", String(data.payment_id || ""));
+    sessionStorage.setItem("last_connectips_txn_id", String(data.txn_id || ""));
+    sessionStorage.setItem("latest_payment_type", "APPOINTMENT");
+    sessionStorage.setItem("latest_payment_gateway", "CONNECTIPS");
+    sessionStorage.setItem(
       "latest_appointment_payload",
       JSON.stringify(appointmentPayload)
     );
@@ -576,7 +562,7 @@ export default function AppointmentPage() {
 
       throw new Error("Selected payment mode is not available yet.");
     } catch (err) {
-      alert(err.message || "Payment failed.");
+      setError(err.message || "Payment failed.");
       setPaying(false);
     }
   };

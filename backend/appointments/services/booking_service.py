@@ -1,6 +1,9 @@
+import logging
 import uuid
 from datetime import datetime ,date, time
 from decimal import Decimal
+
+logger = logging.getLogger(__name__)
 
 from django.db import transaction
 from django.utils import timezone
@@ -148,15 +151,10 @@ def calculate_queue_for_booking(booking):
 
         row = cursor.fetchone()
 
-    print("APPOINTMENT QUEUE DEBUG:", {
-        "group": group,
-        "department": department,
-        "consult_date": str(consult_date),
-        "earlier_count": earlier_count,
-        "row_index": row_index,
-        "legacy_db": LEGACY_DB,
-        "queue_row": row,
-    })
+    logger.debug(
+        "appointment queue group=%s dept=%s date=%s earlier=%s index=%s",
+        group, department, consult_date, earlier_count, row_index,
+    )
 
     if not row:
         raise ValueError(

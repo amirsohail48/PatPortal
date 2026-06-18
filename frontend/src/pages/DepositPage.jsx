@@ -4,22 +4,7 @@ import esewaLogo from "../assets/esewa.png";
 import khalti from "../assets/khalti.png";
 import PageHeader from "../components/PageHeader";
 import PageFooter from "../components/PageFooter";
-
-
-function getCookie(name) {
-  const cookies = document.cookie ? document.cookie.split("; ") : [];
-
-  for (const cookie of cookies) {
-    const parts = cookie.split("=");
-    const key = decodeURIComponent(parts[0]);
-
-    if (key === name) {
-      return decodeURIComponent(parts.slice(1).join("="));
-    }
-  }
-
-  return "";
-}
+import { getCookie } from "../utils/cookie";
 
 async function getCsrfToken() {
   const existingToken = getCookie("csrftoken");
@@ -45,7 +30,6 @@ async function readJsonResponse(response, defaultMessage) {
   try {
     data = JSON.parse(text);
   } catch {
-    console.error("Server returned non-JSON:", text);
     throw new Error(defaultMessage || "Server returned invalid response.");
   }
 
@@ -122,14 +106,22 @@ export default function DepositPage() {
   const [paymentMode, setPaymentMode] = useState("ESEWA");
   const [remarks, setRemarks] = useState("Patient Deposit");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const quickAmounts = [500, 1000, 2000, 5000, 10000];
 
   const numericAmount = Number(amount || 0);
 
+  const MAX_DEPOSIT = 500000;
+
   const handleDepositPayment = async () => {
+    setError("");
     if (!numericAmount || numericAmount <= 0) {
-      alert("Please enter valid deposit amount.");
+      setError("Please enter a valid deposit amount.");
+      return;
+    }
+    if (numericAmount > MAX_DEPOSIT) {
+      setError(`Deposit amount cannot exceed NPR ${MAX_DEPOSIT.toLocaleString()}.`);
       return;
     }
 
@@ -148,8 +140,7 @@ export default function DepositPage() {
 
       throw new Error("Selected payment method is not available.");
     } catch (error) {
-      console.error(error);
-      alert(error.message || "Deposit payment failed.");
+      setError(error.message || "Deposit payment failed.");
       setLoading(false);
     }
   };
@@ -178,9 +169,9 @@ export default function DepositPage() {
 
     if (!data) return;
 
-    localStorage.setItem("latest_payment_id", String(data.payment_id || ""));
-    localStorage.setItem("latest_payment_type", "DEPOSIT");
-    localStorage.setItem("latest_payment_gateway", "ESEWA");
+    sessionStorage.setItem("latest_payment_id", String(data.payment_id || ""));
+    sessionStorage.setItem("latest_payment_type", "DEPOSIT");
+    sessionStorage.setItem("latest_payment_gateway", "ESEWA");
 
     if (data.web_payment_action && data.web_payment_fields) {
       submitEsewaWebForm(data.web_payment_action, data.web_payment_fields);
@@ -220,10 +211,10 @@ export default function DepositPage() {
 
     if (!data) return;
 
-    localStorage.setItem("last_connectips_payment_id", String(data.payment_id || ""));
-    localStorage.setItem("last_connectips_txn_id", String(data.txn_id || ""));
-    localStorage.setItem("latest_payment_type", "DEPOSIT");
-    localStorage.setItem("latest_payment_gateway", "CONNECTIPS");
+    sessionStorage.setItem("last_connectips_payment_id", String(data.payment_id || ""));
+    sessionStorage.setItem("last_connectips_txn_id", String(data.txn_id || ""));
+    sessionStorage.setItem("latest_payment_type", "DEPOSIT");
+    sessionStorage.setItem("latest_payment_gateway", "CONNECTIPS");
 
     const fields = data.fields || data.form_fields;
 
@@ -269,6 +260,11 @@ export default function DepositPage() {
       </section>
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm font-semibold">
+            {error}
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <section className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="bg-[#254a60] text-white px-5 py-4">

@@ -2,6 +2,7 @@ import json
 import logging
 
 from django.contrib.auth import authenticate, login, logout
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
@@ -13,6 +14,33 @@ from django.db import transaction
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _get_client_ip(request):
+    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR", "")
+
+
+def _is_login_rate_limited(ip, patient_id):
+    """
+    Two-axis rate limit: per-IP (blocks distributed spray) and per-username
+    (blocks targeted account attacks). Uses Django's cache backend.
+    Note: LocMemCache (the default) is per-process and resets on restart.
+    For production use a shared cache (Redis/Memcached) via CACHES setting.
+    """
+    ip_key = f"login_ip_{ip}"
+    user_key = f"login_user_{patient_id}"
+
+    if cache.get(ip_key, 0) >= 20:
+        return True
+    if cache.get(user_key, 0) >= 10:
+        return True
+
+    cache.set(ip_key, cache.get(ip_key, 0) + 1, timeout=300)
+    cache.set(user_key, cache.get(user_key, 0) + 1, timeout=300)
+    return False
 
 
 @ensure_csrf_cookie
@@ -73,6 +101,14 @@ def login_api(request):
             "success": False,
             "error": "Patient ID and password are required"
         }, status=400)
+
+    ip = _get_client_ip(request)
+    if _is_login_rate_limited(ip, patient_id):
+        logger.warning("Login rate limit hit ip=%s patient_id=%s", ip, patient_id)
+        return JsonResponse({
+            "success": False,
+            "error": "Too many login attempts. Please try again later.",
+        }, status=429)
 
     logger.info("Login attempt for patient_id=%s", patient_id)
 
@@ -221,8 +257,9 @@ def update_password_api(request):
             "error": "Patient legacy login record not found",
         }, status=404)
 
-    except Exception as error:
+    except Exception:
+        logger.exception("update_password_api failed user=%s", request.user.username)
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)

@@ -1,13 +1,20 @@
+import logging
+
 from django.http import JsonResponse, HttpResponse, FileResponse
 from django.views.decorators.http import require_GET
 
 from legacy_hmis.models import Tblencounter
 from pacs.services.orthanc_service import (
     find_studies_by_encounter,
+    get_study_by_id,
+    get_study_for_instance,
     get_study_series,
     get_cached_instance_preview,
+    PacsServiceUnavailable,
+    PacsRequestTimeout,
 )
-from pacs.services.orthanc_service import PacsServiceUnavailable, PacsRequestTimeout
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -26,6 +33,25 @@ def patient_owns_encounter(patient_id, encounter_id):
         fldpatientval=patient_id,
         fldencounterval=encounter_id,
     ).exists()
+
+
+def patient_can_access_study(patient_id, study_data):
+    """
+    Returns True if patient owns the study's encounter (via AccessionNumber)
+    or if the DICOM PatientID matches the portal patient ID.
+    Mirrors the search logic in find_studies_by_encounter.
+    """
+    main_tags = study_data.get("MainDicomTags") or {}
+    patient_tags = study_data.get("PatientMainDicomTags") or {}
+
+    accession = main_tags.get("AccessionNumber", "")
+    dicom_patient_id = patient_tags.get("PatientID", "")
+
+    if accession and patient_owns_encounter(patient_id, accession):
+        return True
+    if dicom_patient_id and dicom_patient_id == patient_id:
+        return True
+    return False
 
 
 @require_GET
@@ -123,6 +149,15 @@ def pacs_series_api(request, study_id):
         }, status=401)
 
     try:
+        patient_id = request.user.username
+        study = get_study_by_id(study_id)
+
+        if not patient_can_access_study(patient_id, study):
+            return JsonResponse({
+                "success": False,
+                "error": "You are not allowed to access this study",
+            }, status=403)
+
         series = get_study_series(study_id)
 
         return JsonResponse({
@@ -144,6 +179,7 @@ def pacs_series_api(request, study_id):
         }, status=503)
 
     except Exception:
+        logger.exception("pacs_series_api failed study_id=%s", study_id)
         return JsonResponse({
             "success": False,
             "error": "Unable to load DICOM series at the moment. Please try again later.",
@@ -160,6 +196,15 @@ def pacs_preview_api(request, instance_id):
         }, status=401)
 
     try:
+        patient_id = request.user.username
+        study = get_study_for_instance(instance_id)
+
+        if not patient_can_access_study(patient_id, study):
+            return JsonResponse({
+                "success": False,
+                "error": "You are not allowed to access this image",
+            }, status=403)
+
         preview = get_cached_instance_preview(instance_id)
 
         response = FileResponse(
@@ -185,6 +230,7 @@ def pacs_preview_api(request, instance_id):
         }, status=503)
 
     except Exception:
+        logger.exception("pacs_preview_api failed instance_id=%s", instance_id)
         return JsonResponse({
             "success": False,
             "error": "Unable to load image preview at the moment.",

@@ -1,22 +1,7 @@
 import { useEffect, useState } from "react";
 import hospitalLogo from "../assets/hospital-logo.png";
 import PageHeader from "../components/PageHeader";
-
-
-function getCookie(name) {
-  const cookies = document.cookie ? document.cookie.split("; ") : [];
-
-  for (const cookie of cookies) {
-    const parts = cookie.split("=");
-    const key = decodeURIComponent(parts[0]);
-
-    if (key === name) {
-      return decodeURIComponent(parts.slice(1).join("="));
-    }
-  }
-
-  return "";
-}
+import { getCookie } from "../utils/cookie";
 
 export default function ConnectIPSResult({ resultType }) {
   const [status, setStatus] = useState("CHECKING");
@@ -30,7 +15,7 @@ export default function ConnectIPSResult({ resultType }) {
 
       const params = new URLSearchParams(window.location.search);
       const txnIdFromUrl = params.get("TXNID");
-      const txnIdFromStorage = localStorage.getItem("last_connectips_txn_id");
+      const txnIdFromStorage = sessionStorage.getItem("last_connectips_txn_id");
 
       const txnId = txnIdFromUrl || txnIdFromStorage;
 
@@ -69,8 +54,8 @@ export default function ConnectIPSResult({ resultType }) {
       if (data.is_paid || data.connectips_status === "SUCCESS") {
         setStatus("SUCCESS");
         setMessage("Payment successful. Invoice can now be processed.");
-        localStorage.removeItem("last_connectips_payment_id");
-        localStorage.removeItem("last_connectips_txn_id");
+        sessionStorage.removeItem("last_connectips_payment_id");
+        sessionStorage.removeItem("last_connectips_txn_id");
         return;
       }
 

@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 from decimal import Decimal
 from django.utils import timezone
@@ -8,11 +9,15 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.views.decorators.http import require_POST
 
+logger = logging.getLogger(__name__)
+
 from payments.models import EsewaPaymentTransaction, ConnectIPSPaymentTransaction
+from payments.exceptions import GatewayError
 from payments.gateways.esewa import (
     book_intent_payment,
     check_intent_status,
     verify_esewa_signature,
+    verify_epay_response_signature,
     build_epay_v2_form_fields,
 )
 
@@ -135,10 +140,13 @@ def esewa_initiate_bill_payment_api(request):
             "web_payment_fields": epay_form["fields"],
         })
 
-    except Exception as error:
+    except GatewayError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=503)
+    except Exception:
+        logger.exception("esewa_initiate_bill_payment_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 
@@ -223,10 +231,13 @@ def esewa_initiate_deposit_payment_api(request):
             "web_payment_fields": epay_form["fields"],
         })
 
-    except Exception as error:
+    except GatewayError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=503)
+    except Exception:
+        logger.exception("esewa_initiate_deposit_payment_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 @csrf_protect
@@ -321,10 +332,13 @@ def esewa_initiate_appointment_payment_api(request):
             "appointment": normalized_appointment,
         })
 
-    except Exception as error:
+    except GatewayError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=503)
+    except Exception:
+        logger.exception("esewa_initiate_appointment_payment_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 @csrf_exempt
@@ -373,10 +387,13 @@ def esewa_callback_api(request):
             "error": "Payment transaction not found",
         }, status=404)
 
-    except Exception as error:
+    except GatewayError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=503)
+    except Exception:
+        logger.exception("esewa_callback_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 
@@ -448,10 +465,13 @@ def esewa_status_api(request):
             "error": "Payment transaction not found",
         }, status=404)
 
-    except Exception as error:
+    except GatewayError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=503)
+    except Exception:
+        logger.exception("esewa_status_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 
@@ -625,12 +645,13 @@ def connectips_initiate_api(request):
             "form_fields": fields,
         })
 
-    except Exception as error:
-        print("CONNECTIPS ACTION URL:", get_login_url())
-        print("CONNECTIPS FORM FIELDS:", fields)
+    except GatewayError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=503)
+    except Exception:
+        logger.exception("connectips_initiate_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 
@@ -719,8 +740,8 @@ def connectips_validate_api(request):
                 payment.batch_id = str(detail_response.get("batchId", "") or "")
                 payment.save()
 
-            except Exception as detail_error:
-                print("connectIPS detail fetch error:", detail_error)
+            except Exception:
+                logger.exception("connectIPS detail fetch error txn_id=%s", txn_id)
 
         return JsonResponse({
             "success": True,
@@ -743,12 +764,15 @@ def connectips_validate_api(request):
             "error": "Payment transaction not found",
         }, status=404)
 
-    except Exception as error:
+    except GatewayError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=503)
+    except Exception:
+        logger.exception("connectips_validate_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
-    
+
 
 @csrf_protect
 @require_POST
@@ -790,12 +814,26 @@ def esewa_epay_verify_api(request):
                 "error": "transaction_uuid is required",
             }, status=400)
 
+        if not verify_epay_response_signature(esewa_data):
+            logger.warning(
+                "eSewa ePay signature verification failed transaction_uuid=%s",
+                transaction_uuid,
+            )
+            return JsonResponse({
+                "success": False,
+                "error": "Invalid payment signature",
+            }, status=400)
+
         payment = EsewaPaymentTransaction.objects.get(
             transaction_uuid=transaction_uuid,
             patient_id=request.user.username,
         )
 
         if Decimal(str(payment.amount)) != Decimal(str(total_amount)):
+            logger.warning(
+                "eSewa ePay amount mismatch expected=%s received=%s transaction_uuid=%s",
+                payment.amount, total_amount, transaction_uuid,
+            )
             return JsonResponse({
                 "success": False,
                 "error": "Payment amount mismatch",
@@ -828,9 +866,12 @@ def esewa_epay_verify_api(request):
             "error": "Payment transaction not found",
         }, status=404)
 
-    except Exception as error:
+    except GatewayError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=503)
+    except Exception:
+        logger.exception("esewa_epay_verify_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 

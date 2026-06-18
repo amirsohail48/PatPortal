@@ -1,8 +1,11 @@
 import json
+import logging
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET,require_POST
+
+logger = logging.getLogger(__name__)
 from legacy_hmis.models import Tblpatientinfo,Tblgrievances
 from patients.services.visit_history_service import get_visit_history
 from patients.services.encounter_service import get_patient_encounters
@@ -11,7 +14,6 @@ def normalize_grievance_status(status):
     status = str(status or "").strip().lower()
 
     if status in ["new", "solved","rejected"]:
-        #print(status)
         return status
 
     #return "New"
@@ -135,10 +137,11 @@ def visit_history_encounters_api(request):
             "encounters": get_patient_encounters(patient_id),
         })
 
-    except Exception as error:
+    except Exception:
+        logger.exception("visit_history_encounters_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 
@@ -173,12 +176,13 @@ def visit_history_api(request):
             "error": str(error),
         }, status=403)
 
-    except Exception as error:
+    except Exception:
+        logger.exception("visit_history_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
-    
+
 @require_GET
 def grievance_list_api(request):
     if not request.user.is_authenticated:
@@ -200,9 +204,7 @@ def grievance_list_api(request):
 
         for item in grievances:
             status = normalize_grievance_status(item.fldstatus)
-            print(status)
             display = grievance_display_data(status, item.fldresponse)
-            print(display)
 
             data.append({
                 "id": item.fldid,
@@ -223,10 +225,11 @@ def grievance_list_api(request):
             "grievances": data,
         })
 
-    except Exception as error:
+    except Exception:
+        logger.exception("grievance_list_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=500)
 
 

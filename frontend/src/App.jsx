@@ -13,6 +13,7 @@ import ChangePassword from "./pages/ChangePassword";
 import PaymentResult from "./pages/PaymentResult";
 import GrievancesFeedback from "./pages/GrievancesFeedback";
 import DepositPage from "./pages/DepositPage";
+import AuthGuard from "./components/AuthGuard";
 
 export default function App() {
   const path = window.location.pathname;
@@ -21,58 +22,28 @@ export default function App() {
     return <Login />;
   }
 
-  if (path === "/home") {
-    return <HomePage />;
-  }
+  const protectedRoutes = {
+    "/home": <HomePage />,
+    "/patient-profile": <PatientProfile />,
+    "/bill-payment": <BillPayment />,
+    "/archived-reports": <ArchivedReports />,
+    "/invoices-receipts": <InvoicesReceipts />,
+    "/prescriptions": <PrescriptionPage />,
+    "/visit-history": <VisitHistory />,
+    "/appointments": <Appointment />,
+    "/connectips-result": <ConnectIPSResult />,
+    "/dicom": <DicomPage />,
+    "/change-password": <ChangePassword />,
+    "/payment-result": <PaymentResult />,
+    "/transactionResponse/success": <ConnectIPSResult resultType="SUCCESS_RETURN" />,
+    "/transactionResponse/failure": <ConnectIPSResult resultType="FAILURE_RETURN" />,
+    "/grievances-feedback": <GrievancesFeedback />,
+    "/deposit": <DepositPage />,
+  };
 
-  if (path === "/patient-profile") {
-    return <PatientProfile />;
-  }
-
-  if (path === "/bill-payment") {
-    return <BillPayment />;
-  }
-
-  if (path === "/archived-reports") {
-    return <ArchivedReports />;
-  }
-
-  if (path === "/invoices-receipts") {
-    return <InvoicesReceipts />;
-  }
-  if (path === "/prescriptions") {
-    return <PrescriptionPage />;
-  }
-  if (path === "/visit-history") {
-    return <VisitHistory />;
-  }
-  if (path === "/appointments") {
-    return <Appointment />;
-  }
-  if (path === "/connectips-result") {
-    return <ConnectIPSResult />;
-  }
-  if (path === "/dicom") {
-    return <DicomPage />;
-  }
-  if (path === "/change-password") {
-    return <ChangePassword />;
-  }
-  if (path === "/payment-result") {
-    return <PaymentResult />;
-  }
-  if (path === "/transactionResponse/success") {
-  return <ConnectIPSResult resultType="SUCCESS_RETURN" />;
-  }
-
-  if (path === "/transactionResponse/failure") {
-    return <ConnectIPSResult resultType="FAILURE_RETURN" />;
-  }
-  if (path === "/grievances-feedback") {
-  return <GrievancesFeedback />;
-  }
-  if (path === "/deposit") {
-  return <DepositPage />;
+  const page = protectedRoutes[path];
+  if (page) {
+    return <AuthGuard>{page}</AuthGuard>;
   }
 
   return <Login />;

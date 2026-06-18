@@ -94,7 +94,7 @@ export default function PrescriptionPage() {
 
   const handleDownload = async () => {
     if (!selectedEncounter) {
-      alert("Please select encounter first.");
+      setError("Please select encounter first.");
       return;
     }
 
@@ -153,8 +153,7 @@ export default function PrescriptionPage() {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error(error);
-      alert(error.message || "Download failed.");
+      setError(error.message || "Download failed.");
     }
   };
 

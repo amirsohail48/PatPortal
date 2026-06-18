@@ -3,25 +3,8 @@ import connectIPSLogo from "../assets/connectIPS.png";
 import esewaLogo from "../assets/esewa.png";
 import khalti from "../assets/khalti.png";
 import PageHeader from "../components/PageHeader";
+import { getCookie } from "../utils/cookie";
 import PageFooter from "../components/PageFooter";
-
-
-
-
-function getCookie(name) {
-  const cookies = document.cookie ? document.cookie.split("; ") : [];
-
-  for (const cookie of cookies) {
-    const parts = cookie.split("=");
-    const key = decodeURIComponent(parts[0]);
-
-    if (key === name) {
-      return decodeURIComponent(parts.slice(1).join("="));
-    }
-  }
-
-  return "";
-}
 
 function detectPaymentEnvironment() {
   const userAgent = navigator.userAgent || "";
@@ -48,8 +31,6 @@ function openEsewaRcApp(deeplink) {
     throw new Error("eSewa RC deeplink not received.");
   }
 
-  console.log("Opening eSewa RC app:", deeplink);
-
   const link = document.createElement("a");
   link.href = deeplink;
   link.target = "_self";
@@ -73,9 +54,6 @@ function submitConnectIPSForm(actionUrl, fields) {
   }
 
   const cleanActionUrl = actionUrl.split("?")[0];
-
-  console.log("CONNECTIPS CLEAN POST URL:", cleanActionUrl);
-  console.log("CONNECTIPS POST FIELDS:", fields);
 
   const form = document.createElement("form");
   form.method = "POST";
@@ -129,7 +107,6 @@ export default function BillPayment() {
       try {
         data = JSON.parse(text);
       } catch {
-        console.error("Non-JSON response:", text);
         throw new Error("Server returned invalid response");
       }
 
@@ -191,33 +168,25 @@ export default function BillPayment() {
         throw new Error(data.error || "connectIPS payment initiation failed");
       }
 
-      localStorage.setItem("last_connectips_payment_id", data.payment_id);
-      localStorage.setItem("last_connectips_txn_id", data.txn_id);
+      sessionStorage.setItem("last_connectips_payment_id", data.payment_id);
+      sessionStorage.setItem("last_connectips_txn_id", data.txn_id);
 
       const fields = data.fields || data.form_fields;
-
-      console.log("RAW CONNECTIPS RESPONSE:", data);
 
       if (!data.action_url || !fields) {
         throw new Error("connectIPS form data not received");
       }
 
-      if (data.action_url.includes("?")) {
-        console.warn("connectIPS action_url contains query string:", data.action_url);
-      }
-
-
       submitConnectIPSForm(data.action_url, fields);
 
     } catch (error) {
-      console.error(error);
-      alert(error.message || "connectIPS payment failed");
+      setError(error.message || "connectIPS payment failed");
     }
   };
 
   const handleProceedPayment = async () => {
     if (!selectedArc?.arc_code) {
-      alert("Please select one ARC invoice group first.");
+      setError("Please select one ARC invoice group first.");
       return;
     }
 
@@ -228,7 +197,7 @@ export default function BillPayment() {
         const env = detectPaymentEnvironment();
 
         if (env.flutterWebView) {
-          alert("Flutter WebView payment flow should be handled separately.");
+          setError("Mobile app payment flow is not supported in this browser.");
           return;
         }
 
@@ -266,7 +235,6 @@ export default function BillPayment() {
         try {
           data = JSON.parse(text);
         } catch {
-          console.error("Non-JSON payment response:", text);
           throw new Error("Payment server returned invalid response");
         }
 
@@ -274,19 +242,17 @@ export default function BillPayment() {
           throw new Error(data.error || "Payment initiation failed");
         }
 
-        localStorage.setItem("latest_payment_id", data.payment_id);
-        localStorage.setItem("latest_payment_mode", "ESEWA");
-        localStorage.setItem("latest_booking_id", data.booking_id || "");
-        localStorage.setItem("latest_correlation_id", data.correlation_id || "");
+        sessionStorage.setItem("latest_payment_id", data.payment_id);
+        sessionStorage.setItem("latest_payment_mode", "ESEWA");
+        sessionStorage.setItem("latest_booking_id", data.booking_id || "");
+        sessionStorage.setItem("latest_correlation_id", data.correlation_id || "");
 
         if (data.web_payment_action && data.web_payment_fields) {
-          console.log("Opening eSewa ePay RC web form");
           submitEsewaWebForm(data.web_payment_action, data.web_payment_fields);
           return;
         }
 
         if (data.deeplink) {
-          console.log("Opening eSewa Intent RC deeplink");
           openEsewaRcApp(data.deeplink);
           return;
         }
@@ -314,9 +280,9 @@ export default function BillPayment() {
         return;
       }
 
-      alert("Selected payment mode is not available yet.");
+      setError("Selected payment mode is not available yet.");
     } catch (err) {
-      alert(err.message || "Payment failed");
+      setError(err.message || "Payment failed");
     } finally {
       setPaying(false);
       setShowPaymentModal(false);
@@ -557,7 +523,7 @@ export default function BillPayment() {
                 <button
                   onClick={() => {
                     if (!selectedArc?.arc_code) {
-                      alert("Please select one ARC invoice group first.");
+                      setError("Please select one ARC invoice group first.");
                       return;
                     }
 

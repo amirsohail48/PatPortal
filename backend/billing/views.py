@@ -1,9 +1,12 @@
 import json
+import logging
 from decimal import Decimal
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_protect
+
+logger = logging.getLogger(__name__)
 
 from patients.services.encounter_service import get_latest_encounter_id
 from billing.services.invoice_service import (
@@ -40,10 +43,11 @@ def billing_encounters_api(request):
             "encounters": get_patient_encounters(patient_id),
         })
 
-    except Exception as error:
+    except Exception:
+        logger.exception("billing_encounters_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 
@@ -75,10 +79,11 @@ def invoices_receipts_api(request):
             "error": str(error),
         }, status=403)
 
-    except Exception as error:
+    except Exception:
+        logger.exception("invoices_receipts_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 
@@ -126,10 +131,11 @@ def billing_document_preview_api(request):
             "error": str(error),
         }, status=403)
 
-    except Exception as error:
+    except Exception:
+        logger.exception("billing_document_preview_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 #=======================Billpayment Related======================================
@@ -163,10 +169,11 @@ def pending_bills_api(request):
             "invoice_groups": invoice_groups,
         })
 
-    except Exception as error:
+    except Exception:
+        logger.exception("pending_bills_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 
@@ -209,10 +216,11 @@ def arc_amount_api(request):
             "amount": str(amount),
         })
 
-    except Exception as error:
+    except Exception:
+        logger.exception("arc_amount_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 
@@ -267,10 +275,11 @@ def create_invoice_api(request):
             "invoice_no": invoice_no,
         })
 
-    except Exception as error:
+    except Exception:
+        logger.exception("create_invoice_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)
 
 
@@ -324,8 +333,9 @@ def create_deposit_api(request):
             "deposit_no": deposit_no,
         })
 
-    except Exception as error:
+    except Exception:
+        logger.exception("create_deposit_api failed")
         return JsonResponse({
             "success": False,
-            "error": str(error),
+            "error": "An unexpected error occurred. Please try again.",
         }, status=400)

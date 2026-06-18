@@ -86,7 +86,7 @@ export default function DicomPage() {
 
   const openPacsApp = async () => {
   if (!selectedEncounter) {
-    alert("Please select encounter first.");
+    setError("Please select encounter first.");
     return;
   }
 
@@ -104,9 +104,9 @@ export default function DicomPage() {
       throw new Error(data.error || "Failed to open PACS");
     }
 
-    window.open(data.launch_url, "_blank");
+    window.open(data.launch_url, "_blank", "noopener,noreferrer");
   } catch (error) {
-    alert(error.message || "Unable to open PACS app");
+    setError(error.message || "Unable to open PACS app");
   }
 };
 
