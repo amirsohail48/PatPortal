@@ -172,7 +172,7 @@ export default function PrescriptionPage() {
               title="Prescription"
             />
 
-      <section className="bg-gradient-to-r from-[#052f48] to-[#254a60] text-white py-8 px-4 sm:px-6 lg:px-8">
+      <section className="bg-linear-to-r from-[#052f48] to-[#254a60] text-white py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-5 items-center">
           <div className="lg:col-span-2">
             <h1 className="text-2xl sm:text-3xl font-black">

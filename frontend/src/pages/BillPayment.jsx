@@ -307,7 +307,7 @@ export default function BillPayment() {
         title="Bill Payment"
       />
 
-      <section className="bg-gradient-to-r from-[#052f48] to-[#254a60] text-white py-8 px-4 sm:px-6 lg:px-8">
+      <section className="bg-linear-to-r from-[#052f48] to-[#254a60] text-white py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
           <div className="md:col-span-2">
             <h1 className="text-2xl sm:text-3xl font-black">
@@ -615,7 +615,7 @@ function PaymentModeModal({
   return (
     <div className="fixed inset-0 z-[999] bg-black/50 backdrop-blur-sm flex items-center justify-center px-4">
       <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
-        <div className="bg-gradient-to-r from-[#052f48] to-[#254a60] text-white px-5 py-4 flex items-center justify-between">
+        <div className="bg-linear-to-r from-[#052f48] to-[#254a60] text-white px-5 py-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-black">Select Payment Mode</h2>
             <p className="text-xs text-gray-200 mt-1">

@@ -265,8 +265,6 @@ export default function PaymentResult() {
 
   const checkStatus = async () => {
     try {
-      setStatus("CHECKING");
-      setMessage("Checking payment status...");
 
       const params = new URLSearchParams(window.location.search);
 
@@ -287,9 +285,8 @@ export default function PaymentResult() {
           throw new Error("Invalid eSewa response data.");
         }
 
-        setGatewayResponse(decodedData);
-
         await verifyEpayPayment(decodedData);
+        setGatewayResponse(decodedData);
         return;
       }
 
@@ -306,6 +303,7 @@ export default function PaymentResult() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     checkStatus();
   }, []);
 
@@ -322,7 +320,7 @@ export default function PaymentResult() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 w-full max-w-3xl overflow-hidden">
-        <div className="bg-gradient-to-r from-[#052f48] to-[#254a60] text-white px-5 py-4 flex items-center gap-3">
+        <div className="bg-linear-to-r from-[#052f48] to-[#254a60] text-white px-5 py-4 flex items-center gap-3">
           <div className="w-12 h-12 bg-white rounded-lg p-1 flex items-center justify-center">
             <img
               src={hospitalLogo}
@@ -386,7 +384,7 @@ export default function PaymentResult() {
           <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
             <button
               type="button"
-              onClick={checkStatus}
+              onClick={() => { setStatus("CHECKING"); setMessage("Checking payment status..."); checkStatus(); }}
               className="bg-[#254a60] text-white px-5 py-3 rounded-xl font-bold"
             >
               Check Again

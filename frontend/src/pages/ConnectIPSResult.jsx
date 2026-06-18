@@ -10,8 +10,6 @@ export default function ConnectIPSResult({ resultType }) {
 
   const validatePayment = async () => {
     try {
-      setStatus("CHECKING");
-      setMessage("Validating connectIPS payment...");
 
       const params = new URLSearchParams(window.location.search);
       const txnIdFromUrl = params.get("TXNID");
@@ -74,6 +72,7 @@ export default function ConnectIPSResult({ resultType }) {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     validatePayment();
   }, []);
 
@@ -83,7 +82,7 @@ export default function ConnectIPSResult({ resultType }) {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 w-full max-w-xl overflow-hidden">
-        <div className="bg-gradient-to-r from-[#052f48] to-[#254a60] text-white px-5 py-4 flex items-center gap-3">
+        <div className="bg-linear-to-r from-[#052f48] to-[#254a60] text-white px-5 py-4 flex items-center gap-3">
           <div className="w-12 h-12 bg-white rounded-lg p-1 flex items-center justify-center">
             <img
               src={hospitalLogo}
@@ -133,7 +132,7 @@ export default function ConnectIPSResult({ resultType }) {
 
           <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
             <button
-              onClick={validatePayment}
+              onClick={() => { setStatus("CHECKING"); setMessage("Validating connectIPS payment..."); validatePayment(); }}
               className="bg-[#254a60] text-white px-5 py-3 rounded-xl font-bold"
             >
               Check Again

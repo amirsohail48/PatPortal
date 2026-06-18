@@ -1,7 +1,6 @@
 import { useState,useEffect } from 'react';
 import hospitalLogo from "../assets/hospital-logo.png";
 import pahsImage from "../assets/pahs1.jpeg";
-import PageHeader from "../components/PageHeader";
 import PageFooter from "../components/PageFooter";
 import { getCookie } from "../utils/cookie";
 
@@ -131,7 +130,7 @@ export default function HomePage() {
         const route = serviceRoutes[serviceId];
 
         if (route) {
-        window.location.href = route;
+        window.location.assign(route);
         }
     };
 

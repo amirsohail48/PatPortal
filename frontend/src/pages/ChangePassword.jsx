@@ -92,7 +92,7 @@ export default function ChangePassword() {
 
       <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-8">
         <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="bg-gradient-to-r from-[#052f48] to-[#254a60] text-white px-6 py-6">
+          <div className="bg-linear-to-r from-[#052f48] to-[#254a60] text-white px-6 py-6">
             <h1 className="text-2xl font-black">Update Password</h1>
             <p className="text-sm text-gray-200 mt-1">
               Enter your current password and choose a new password.

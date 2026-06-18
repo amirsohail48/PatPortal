@@ -161,7 +161,7 @@ export default function InvoicesReceipts() {
               title="Invoices and Receipts"
             />
 
-      <section className="bg-gradient-to-r from-[#052f48] to-[#254a60] text-white py-8 px-4 sm:px-6 lg:px-8">
+      <section className="bg-linear-to-r from-[#052f48] to-[#254a60] text-white py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-5 items-center">
           <div className="lg:col-span-2">
             <h1 className="text-2xl sm:text-3xl font-black">
@@ -355,7 +355,7 @@ function PreviewModal({ loading, data, onClose }) {
   return (
     <div className="fixed inset-0 z-[999] bg-black/50 backdrop-blur-sm flex items-center justify-center px-4">
       <div className="bg-white w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl shadow-2xl">
-        <div className="bg-gradient-to-r from-[#052f48] to-[#254a60] text-white px-5 py-4 flex justify-between items-center">
+        <div className="bg-linear-to-r from-[#052f48] to-[#254a60] text-white px-5 py-4 flex justify-between items-center">
           <div>
             <h2 className="text-lg font-black">
               {data?.document_type || "Billing Document"} Preview

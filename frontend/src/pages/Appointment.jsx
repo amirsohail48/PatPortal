@@ -580,41 +580,8 @@ export default function AppointmentPage() {
       <PageHeader
         title="Online Appointment"
       />
-
-      {/* <header className="bg-[#052f48] text-white shadow-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white rounded-lg p-1 flex items-center justify-center shadow-sm">
-              <img
-                src={hospitalLogo}
-                alt="PAHS Logo"
-                className="w-full h-full object-contain"
-              />
-            </div>
-
-            <div>
-              <span className="text-xs tracking-wider block text-gray-300 uppercase">
-                Patan Academy of Health Sciences
-              </span>
-              <span className="text-base sm:text-lg font-bold block">
-                Online Appointment
-              </span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              window.location.href = "/home";
-            }}
-            className="bg-[#254a60] hover:bg-white/10 text-white border border-white/20 px-4 py-2 rounded-lg text-xs sm:text-sm font-medium"
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      </header> */}
-
-      <section className="bg-gradient-to-r from-[#052f48] to-[#254a60] text-white py-8 px-4 sm:px-6 lg:px-8">
+      
+      <section className="bg-linear-to-r from-[#052f48] to-[#254a60] text-white py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-5 items-center">
           <div className="lg:col-span-2">
             <h1 className="text-2xl sm:text-3xl font-black">
@@ -1137,7 +1104,7 @@ function AppointmentPreviewModal({
   return (
     <div className="fixed inset-0 z-[999] bg-black/50 backdrop-blur-sm flex items-center justify-center px-4">
       <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
-        <div className="bg-gradient-to-r from-[#052f48] to-[#254a60] text-white px-5 py-4 flex items-center justify-between">
+        <div className="bg-linear-to-r from-[#052f48] to-[#254a60] text-white px-5 py-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-black">Verify Appointment Detail</h2>
             <p className="text-xs text-gray-200 mt-1">
@@ -1246,7 +1213,7 @@ function AppointmentPaymentModal({
   return (
     <div className="fixed inset-0 z-[999] bg-black/50 backdrop-blur-sm flex items-center justify-center px-4">
       <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
-        <div className="bg-gradient-to-r from-[#052f48] to-[#254a60] text-white px-5 py-4 flex items-center justify-between">
+        <div className="bg-linear-to-r from-[#052f48] to-[#254a60] text-white px-5 py-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-black">Select Payment Mode</h2>
             <p className="text-xs text-gray-200 mt-1">

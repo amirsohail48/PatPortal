@@ -134,7 +134,7 @@ export default function GrievancesFeedback() {
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <section className="lg:col-span-1 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="bg-gradient-to-r from-[#052f48] to-[#254a60] text-white px-5 py-5">
+          <div className="bg-linear-to-r from-[#052f48] to-[#254a60] text-white px-5 py-5">
             <h1 className="text-xl font-black">Submit Feedback</h1>
             <p className="text-sm text-gray-200 mt-1">
               Send your grievance or feedback to the hospital.
