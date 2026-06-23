@@ -3396,7 +3396,6 @@ class Tblpatientinfo(models.Model):
     fldcomment = models.CharField(max_length=250, blank=True, null=True)
     fldencrypt = models.IntegerField(blank=True, null=True)
     fldpassword = models.CharField(max_length=250, blank=True, null=True)
-    fldcategory = models.CharField(max_length=150, blank=True, null=True)
     fldrank = models.CharField(max_length=250, blank=True, null=True)
     fldunit = models.CharField(max_length=250, blank=True, null=True)
     flduserid = models.CharField(max_length=25, blank=True, null=True)

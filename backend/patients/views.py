@@ -112,7 +112,6 @@ def patient_profile_api(request):
             "ward": patient.fldptaddward,
             "guardian": patient.fldptguardian,
             "relation": patient.fldrelation,
-            "category": patient.fldcategory,
             "discount": patient.flddiscount,
             "registered_date": patient.fldptadmindate.strftime("%Y-%m-%d") if patient.fldptadmindate else "",
         }
