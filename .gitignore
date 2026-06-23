@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 *.so
 .Python
+**/migrations/
+!**/migrations/__init__.py
 env/
 venv/
 portalenv/
