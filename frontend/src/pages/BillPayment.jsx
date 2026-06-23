@@ -3,7 +3,6 @@ import connectIPSLogo from "../assets/connectIPS.png";
 import esewaLogo from "../assets/esewa.png";
 import khalti from "../assets/khalti.png";
 import PageHeader from "../components/PageHeader";
-import { getCookie } from "../utils/cookie";
 import PageFooter from "../components/PageFooter";
 
 function detectPaymentEnvironment() {
@@ -138,28 +137,33 @@ export default function BillPayment() {
     fetchPendingBills();
   }, []);
 
-  const proceedConnectIPS = async (amount, paymentType, remarks, particulars) => {
+  const proceedConnectIPS = async (paymentType, remarks, particulars) => {
     try {
       const csrfResponse = await fetch("/api/csrf/", {
         credentials: "include",
       });
 
       const csrfData = await csrfResponse.json();
-      const csrfToken = getCookie("csrftoken") || csrfData.csrfToken;
+      if (!csrfData.csrfToken) throw new Error("Failed to retrieve CSRF token.");
+
+      const body = {
+        payment_type: paymentType,
+        remarks,
+        particulars,
+      };
+
+      if (paymentType === "BILL") {
+        body.arc_code = selectedArc.arc_code;
+      }
 
       const response = await fetch("/api/payments/connectips/initiate/", {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken,
+          "X-CSRFToken": csrfData.csrfToken,
         },
-        body: JSON.stringify({
-          payment_type: paymentType,
-          amount: amount,
-          remarks: remarks,
-          particulars: particulars,
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
@@ -181,6 +185,48 @@ export default function BillPayment() {
 
     } catch (error) {
       setError(error.message || "connectIPS payment failed");
+    }
+  };
+
+  const proceedKhalti = async (paymentType) => {
+    try {
+      const csrfResponse = await fetch("/api/csrf/", { credentials: "include" });
+      const csrfData = await csrfResponse.json();
+      if (!csrfData.csrfToken) throw new Error("Failed to retrieve CSRF token.");
+
+      const body = { payment_type: paymentType };
+
+      if (paymentType === "BILL") {
+        body.arc_code = selectedArc.arc_code;
+      }
+
+      const response = await fetch("/api/payments/khalti/initiate/", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfData.csrfToken,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Khalti payment initiation failed.");
+      }
+
+      sessionStorage.setItem("last_khalti_payment_id", String(data.payment_id || ""));
+      sessionStorage.setItem("last_khalti_pidx", String(data.pidx || ""));
+      sessionStorage.setItem("latest_payment_gateway", "KHALTI");
+
+      if (!data.payment_url) {
+        throw new Error("No Khalti payment URL received.");
+      }
+
+      window.location.href = data.payment_url;
+    } catch (error) {
+      setError(error.message || "Khalti payment failed.");
     }
   };
 
@@ -207,7 +253,8 @@ export default function BillPayment() {
         });
 
         const csrfData = await csrfResponse.json();
-        const csrfToken = csrfData.csrfToken || getCookie("csrftoken");
+        if (!csrfData.csrfToken) throw new Error("Failed to retrieve CSRF token.");
+        const csrfToken = csrfData.csrfToken;
 
         const response = await fetch("/api/payments/esewa/bill/initiate/", {
           method: "POST",
@@ -271,12 +318,20 @@ export default function BillPayment() {
         }
 
         await proceedConnectIPS(
-          selectedArc.amount,
           "BILL",
           "Bill Payment",
           `Bill payment for ${selectedArc.arc_code}`
         );
 
+        return;
+      }
+
+      if (selectedPaymentMode === "KHALTI") {
+        if (!selectedArc?.arc_code) {
+          throw new Error("Selected invoice ARC code is missing.");
+        }
+
+        await proceedKhalti("BILL");
         return;
       }
 
@@ -595,12 +650,12 @@ function PaymentModeModal({
       disabled: false,
     },
     {
-      id: "Khalti",
+      id: "KHALTI",
       name: "Khalti",
-      desc: "Pay directly through bank account using ConnectIPS.",
-      status: "Coming Soon",
+      desc: "Pay using Khalti digital wallet.",
+      status: "Available",
       image: khalti,
-      disabled: true,
+      disabled: false,
     },
     {
       id: "CARD",

@@ -123,19 +123,20 @@ def build_connectips_payment_fields(
     amount_paisa = amount_to_paisa(amount)
 
     fields = {
-        "MERCHANTID": settings.CONNECTIPS_MERCHANT_ID,
-        "APPID": settings.CONNECTIPS_APP_ID,
-        "APPNAME": settings.CONNECTIPS_APP_NAME,
-        "TXNID": txn_id,
+        "MERCHANTID": clean_connectips_value(settings.CONNECTIPS_MERCHANT_ID),
+        "APPID": clean_connectips_value(settings.CONNECTIPS_APP_ID),
+        "APPNAME": clean_connectips_value(settings.CONNECTIPS_APP_NAME),
+        "TXNID": clean_connectips_value(txn_id),
         "TXNDATE": get_txn_date(),
-        "TXNCRNCY": settings.CONNECTIPS_CURRENCY,
+        "TXNCRNCY": clean_connectips_value(settings.CONNECTIPS_CURRENCY),
         "TXNAMT": str(amount_paisa),
-        "REFERENCEID": reference_id,
-        "REMARKS": remarks[:50],
-        "PARTICULARS": particulars[:100],
+        "REFERENCEID": clean_connectips_value(reference_id),
+        "REMARKS": clean_connectips_value(remarks)[:50],
+        "PARTICULARS": clean_connectips_value(particulars)[:100],
     }
 
     message = build_payment_token_message(fields)
+    logger.debug("connectIPS TOKEN message: %s", message)
     fields["TOKEN"] = rsa_sign_base64(message)
 
     return fields

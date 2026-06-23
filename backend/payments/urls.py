@@ -19,7 +19,9 @@ urlpatterns = [
     path("connectips/validate/",views.connectips_validate_api,name="connectips_validate_api"),
     #Esewa
     path("esewa/epay/verify/", views.esewa_epay_verify_api, name="esewa_epay_verify_api"),
-    path("esewa/appointment/initiate/", views.esewa_initiate_appointment_payment_api, name="esewa_initiate_appointment_payment_api",
-),
+    path("esewa/appointment/initiate/", views.esewa_initiate_appointment_payment_api, name="esewa_initiate_appointment_payment_api"),
 
+    # Khalti routes
+    path("khalti/initiate/", views.khalti_initiate_api, name="khalti_initiate_api"),
+    path("khalti/verify/", views.khalti_verify_api, name="khalti_verify_api"),
 ]

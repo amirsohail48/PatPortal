@@ -221,6 +221,12 @@ CONNECTIPS_PFX_PASSWORD = os.getenv("CONNECTIPS_PFX_PASSWORD", "")
 
 CONNECTIPS_CURRENCY = os.getenv("CONNECTIPS_CURRENCY", "NPR")
 
+#Khalti
+KHALTI_SECRET_KEY = os.getenv("KHALTI_SECRET_KEY", "")
+KHALTI_INITIATE_URL = os.getenv("KHALTI_INITIATE_URL", "https://dev.khalti.com/api/v2/epayment/initiate/")
+KHALTI_LOOKUP_URL = os.getenv("KHALTI_LOOKUP_URL", "https://dev.khalti.com/api/v2/epayment/lookup/")
+KHALTI_RETURN_URL = os.getenv("KHALTI_RETURN_URL", "http://localhost:5173/khalti-result")
+
 #PACS
 import os
 

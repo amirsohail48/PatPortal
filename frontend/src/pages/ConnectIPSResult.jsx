@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import hospitalLogo from "../assets/hospital-logo.png";
+import connectipsLogo from "../assets/connectIPS.png";
 import PageHeader from "../components/PageHeader";
-import { getCookie } from "../utils/cookie";
 
 export default function ConnectIPSResult({ resultType }) {
   const [status, setStatus] = useState("CHECKING");
@@ -26,14 +26,14 @@ export default function ConnectIPSResult({ resultType }) {
       });
 
       const csrfData = await csrfResponse.json();
-      const csrfToken = getCookie("csrftoken") || csrfData.csrfToken;
+      if (!csrfData.csrfToken) throw new Error("Failed to retrieve CSRF token.");
 
       const response = await fetch("/api/payments/connectips/validate/", {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken,
+          "X-CSRFToken": csrfData.csrfToken,
         },
         body: JSON.stringify({
           txn_id: txnId,
@@ -80,10 +80,13 @@ export default function ConnectIPSResult({ resultType }) {
   const isChecking = status === "CHECKING";
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <PageHeader title="ConnectIPS Payment Result" />
+
+      <div className="flex-1 flex items-center justify-center px-4 py-8">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 w-full max-w-xl overflow-hidden">
         <div className="bg-linear-to-r from-[#052f48] to-[#254a60] text-white px-5 py-4 flex items-center gap-3">
-          <div className="w-12 h-12 bg-white rounded-lg p-1 flex items-center justify-center">
+          <div className="w-12 h-12 bg-white rounded-lg p-1 flex items-center justify-center shrink-0">
             <img
               src={hospitalLogo}
               alt="PAHS Logo"
@@ -91,13 +94,21 @@ export default function ConnectIPSResult({ resultType }) {
             />
           </div>
 
-          <div>
+          <div className="flex-1">
             <span className="text-xs tracking-wider block text-gray-300 uppercase">
               Patan Academy of Health Sciences
             </span>
             <span className="text-base sm:text-lg font-bold block">
               connectIPS Payment Verification
             </span>
+          </div>
+
+          <div className="w-12 h-12 bg-white rounded-lg p-1.5 flex items-center justify-center shrink-0">
+            <img
+              src={connectipsLogo}
+              alt="ConnectIPS"
+              className="w-full h-full object-contain"
+            />
           </div>
         </div>
 
@@ -148,6 +159,7 @@ export default function ConnectIPSResult({ resultType }) {
             </button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

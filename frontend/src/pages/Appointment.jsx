@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import esewaLogo from "../assets/esewa.png"
 import connectipsLogo from "../assets/connectIPS.png"
-import khaltiLogo from "../assets/khaltiLogo.png"
+import khaltiLogo from "../assets/khalti.png"
 import PageHeader from "../components/PageHeader";
-import { getCookie } from "../utils/cookie";
 import PageFooter from "../components/PageFooter";
 
 const GROUP_DESCRIPTIONS = {
@@ -14,23 +13,10 @@ const GROUP_DESCRIPTIONS = {
 };
 
 async function getCsrfToken() {
-  const existingToken = getCookie("csrftoken");
-
-  if (existingToken) {
-    return existingToken;
-  }
-
-  try {
-    const response = await fetch("/api/csrf/", {
-      credentials: "include",
-    });
-
-    const data = await response.json();
-
-    return data.csrfToken || getCookie("csrftoken");
-  } catch {
-    return getCookie("csrftoken");
-  }
+  const response = await fetch("/api/csrf/", { credentials: "include" });
+  const data = await response.json();
+  if (!data.csrfToken) throw new Error("Failed to retrieve CSRF token.");
+  return data.csrfToken;
 }
 
 async function readJsonResponse(response, defaultErrorMessage) {
@@ -538,6 +524,40 @@ export default function AppointmentPage() {
     submitConnectIPSForm(data.action_url, fields);
   };
 
+  const proceedKhaltiPayment = async () => {
+    const csrfToken = await getCsrfToken();
+    const appointmentPayload = getAppointmentPayload();
+
+    const response = await fetch("/api/payments/khalti/initiate/", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken,
+      },
+      body: JSON.stringify({
+        payment_type: "APPOINTMENT",
+        amount: selectedQuota.item_cost,
+        appointment: appointmentPayload,
+      }),
+    });
+
+    const data = await readJsonResponse(response, "Failed to start Khalti appointment payment.");
+    if (!data) return;
+
+    sessionStorage.setItem("last_khalti_payment_id", String(data.payment_id || ""));
+    sessionStorage.setItem("last_khalti_pidx", String(data.pidx || ""));
+    sessionStorage.setItem("latest_payment_type", "APPOINTMENT");
+    sessionStorage.setItem("latest_payment_gateway", "KHALTI");
+    sessionStorage.setItem("latest_appointment_payload", JSON.stringify(appointmentPayload));
+
+    if (!data.payment_url) {
+      throw new Error("No Khalti payment URL received.");
+    }
+
+    window.location.href = data.payment_url;
+  };
+
   const handleProceedPayment = async () => {
     try {
       setPaying(true);
@@ -557,6 +577,11 @@ export default function AppointmentPage() {
 
       if (selectedPaymentMode === "CONNECTIPS") {
         await proceedConnectIPSPayment();
+        return;
+      }
+
+      if (selectedPaymentMode === "KHALTI") {
+        await proceedKhaltiPayment();
         return;
       }
 
@@ -1202,11 +1227,11 @@ function AppointmentPaymentModal({
     },
     {
       id: "KHALTI",
-      name: "khalti",
-      desc: "Pay using Khalti Wallet",
-      status: "Coming Soon",
+      name: "Khalti",
+      desc: "Pay using Khalti digital wallet.",
+      status: "Available",
       image: khaltiLogo,
-      disabled: true,
+      disabled: false,
     },
   ];
 

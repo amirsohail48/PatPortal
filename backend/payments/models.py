@@ -61,6 +61,8 @@ class ConnectIPSPaymentTransaction(models.Model):
 
     payment_type = models.CharField(max_length=50, blank=True, null=True)
     patient_id = models.CharField(max_length=150)
+    encounter_id = models.CharField(max_length=150, blank=True, null=True)
+    arc_code = models.CharField(max_length=250, blank=True, null=True)
 
     txn_id = models.CharField(max_length=20, unique=True)
     reference_id = models.CharField(max_length=20)
@@ -93,3 +95,44 @@ class ConnectIPSPaymentTransaction(models.Model):
 
     def __str__(self):
         return f"{self.txn_id} - {self.patient_id} - {self.status}"
+
+
+class KhaltiPaymentTransaction(models.Model):
+    STATUS_CHOICES = [
+        ("INITIATED", "Initiated"),
+        ("PENDING", "Pending"),
+        ("SUCCESS", "Success"),
+        ("FAILED", "Failed"),
+        ("EXPIRED", "Expired"),
+    ]
+
+    payment_type = models.CharField(max_length=50, blank=True, null=True)
+    patient_id = models.CharField(max_length=150)
+    encounter_id = models.CharField(max_length=150, blank=True, null=True)
+    arc_code = models.CharField(max_length=250, blank=True, null=True)
+
+    purchase_order_id = models.CharField(max_length=30, unique=True)
+    pidx = models.CharField(max_length=200, blank=True, null=True)
+
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    amount_paisa = models.IntegerField()
+
+    khalti_status = models.CharField(max_length=50, blank=True, null=True)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="INITIATED")
+
+    transaction_id = models.CharField(max_length=200, blank=True, null=True)
+
+    request_payload = models.JSONField(blank=True, null=True)
+    initiate_response = models.JSONField(blank=True, null=True)
+    lookup_response = models.JSONField(blank=True, null=True)
+
+    is_finalized = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "khalti_payment_transaction"
+
+    def __str__(self):
+        return f"{self.purchase_order_id} - {self.patient_id} - {self.status}"

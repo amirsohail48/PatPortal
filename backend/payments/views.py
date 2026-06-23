@@ -11,7 +11,7 @@ from django.views.decorators.http import require_POST
 
 logger = logging.getLogger(__name__)
 
-from payments.models import EsewaPaymentTransaction, ConnectIPSPaymentTransaction
+from payments.models import EsewaPaymentTransaction, ConnectIPSPaymentTransaction, KhaltiPaymentTransaction
 from payments.exceptions import GatewayError
 from payments.gateways.esewa import (
     book_intent_payment,
@@ -28,6 +28,13 @@ from payments.gateways.connectips import (
     get_login_url,
     validate_connectips_transaction,
     get_connectips_transaction_detail,
+)
+
+from payments.gateways.khalti import (
+    amount_to_paisa as khalti_amount_to_paisa,
+    generate_order_id as khalti_generate_order_id,
+    khalti_initiate,
+    khalti_lookup,
 )
 
 from patients.services.encounter_service import get_latest_encounter_id
@@ -475,6 +482,21 @@ def esewa_status_api(request):
         }, status=400)
 
 
+def _assert_valid_deposit_no(result, context=""):
+    """
+    Raises GatewayError if Healthybit did not return a valid DET deposit number.
+
+    Valid: any string containing "DET" (e.g. "DEPOSIT:DET-2SDH1").
+    Invalid: "Duplicate Request", empty, or any other non-DET response.
+    """
+    if not result or "DET" not in str(result).upper():
+        logger.error("Healthybit deposit invalid response=%r context=%s", result, context)
+        raise GatewayError(
+            f"Deposit could not be recorded in the hospital system ({result}). "
+            "Please contact the billing desk with your payment receipt."
+        )
+
+
 def finalize_successful_payment(payment):
     """
     Creates Healthybit invoice, deposit, or appointment booking after verified payment success.
@@ -514,11 +536,14 @@ def finalize_successful_payment(payment):
         if payment.healthybit_deposit_no:
             return payment.healthybit_deposit_no
 
-        deposit_no = create_deposit(
+        raw_deposit = create_deposit(
             encounter_id=payment.encounter_id,
             transaction_no=payment.transaction_uuid,
             amount=payment.amount,
         )
+
+        _assert_valid_deposit_no(raw_deposit, context=f"esewa txn={payment.transaction_uuid}")
+        deposit_no = raw_deposit
 
         payment.healthybit_deposit_no = deposit_no
         payment.esewa_status = "DEPOSIT_CREATED"
@@ -583,18 +608,38 @@ def connectips_initiate_api(request):
     try:
 
         normalized_appointment = None
+        encounter_id = None
+        arc_code = None
 
         payment_type = payload.get("payment_type", "GENERAL")
-        amount = Decimal(str(payload.get("amount", "0")))
         remarks = payload.get("remarks", "PatPortal Payment")
         particulars = payload.get("particulars", "PatPortal Online Payment")
 
-        if payment_type == "APPOINTMENT":
+        patient_id = request.user.username
+
+        if payment_type == "BILL":
+            arc_code = payload.get("arc_code")
+            if not arc_code:
+                return JsonResponse({
+                    "success": False,
+                    "error": "arc_code is required for BILL payment",
+                }, status=400)
+            encounter_id = get_latest_encounter_id(patient_id)
+            amount = get_arc_amount(encounter_id, arc_code)
+
+        elif payment_type == "DEPOSIT":
+            encounter_id = get_latest_encounter_id(patient_id)
+            amount = Decimal(str(payload.get("amount", "0")))
+
+        elif payment_type == "APPOINTMENT":
             appointment = payload.get("appointment") or {}
             normalized_appointment = validate_appointment_before_payment(appointment)
             booking_id = generate_booking_id()
             normalized_appointment["booking_id"] = booking_id
             amount = Decimal(str(normalized_appointment["item_cost"]))
+
+        else:
+            amount = Decimal(str(payload.get("amount", "0")))
 
         if amount <= 0:
             return JsonResponse({
@@ -616,7 +661,9 @@ def connectips_initiate_api(request):
 
         payment = ConnectIPSPaymentTransaction.objects.create(
             payment_type=payment_type,
-            patient_id=request.user.username,
+            patient_id=patient_id,
+            encounter_id=encounter_id,
+            arc_code=arc_code,
             txn_id=txn_id,
             reference_id=reference_id,
             amount=amount,
@@ -706,15 +753,38 @@ def connectips_validate_api(request):
         payment.status_desc = status_desc
 
         appointment_confirmation = None
+        invoice_no = None
+        deposit_no = None
 
         if status == "SUCCESS":
             payment.status = "SUCCESS"
 
-            if payment.payment_type == "APPOINTMENT" and not payment.is_finalized:
-                appointment_confirmation = create_booking_after_success(
-                    payment=payment,
-                    gateway="CONNECTIPS",
-                )
+            if not payment.is_finalized:
+                if payment.payment_type == "APPOINTMENT":
+                    appointment_confirmation = create_booking_after_success(
+                        payment=payment,
+                        gateway="CONNECTIPS",
+                    )
+
+                elif payment.payment_type == "BILL":
+                    check_invoice(
+                        encounter_id=payment.encounter_id,
+                        arc_code=payment.arc_code,
+                    )
+                    invoice_no = create_invoice(
+                        encounter_id=payment.encounter_id,
+                        arc_code=payment.arc_code,
+                        amount=payment.amount,
+                    )
+
+                elif payment.payment_type == "DEPOSIT":
+                    raw_deposit = create_deposit(
+                        encounter_id=payment.encounter_id,
+                        transaction_no=payment.txn_id,
+                        amount=payment.amount,
+                    )
+                    _assert_valid_deposit_no(raw_deposit, context=f"connectips txn={payment.txn_id}")
+                    deposit_no = raw_deposit
 
             payment.is_finalized = True
         elif status == "FAILED":
@@ -756,6 +826,8 @@ def connectips_validate_api(request):
             "validation_response": validation_response,
             "detail_response": detail_response,
             "booking_confirmation": appointment_confirmation,
+            "invoice_no": invoice_no,
+            "deposit_no": deposit_no,
         })
 
     except ConnectIPSPaymentTransaction.DoesNotExist:
@@ -874,4 +946,255 @@ def esewa_epay_verify_api(request):
             "success": False,
             "error": "An unexpected error occurred. Please try again.",
         }, status=400)
+
+
+@csrf_protect
+@require_POST
+def khalti_initiate_api(request):
+    """
+    Generic Khalti ePay payment initiation.
+
+    Frontend sends:
+    - BILL:        { "payment_type": "BILL", "arc_code": "..." }
+    - DEPOSIT:     { "payment_type": "DEPOSIT", "amount": 5000 }
+    - APPOINTMENT: { "payment_type": "APPOINTMENT", "appointment": {...} }
+    """
+
+    if not request.user.is_authenticated:
+        return JsonResponse({"success": False, "error": "Authentication required"}, status=401)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        payload = {}
+
+    try:
+        from django.conf import settings as django_settings
+
+        patient_id = request.user.username
+        payment_type = payload.get("payment_type", "GENERAL")
+
+        normalized_appointment = None
+        encounter_id = None
+        arc_code = None
+
+        if payment_type == "BILL":
+            arc_code = payload.get("arc_code")
+            if not arc_code:
+                return JsonResponse({"success": False, "error": "arc_code is required for BILL payment"}, status=400)
+            encounter_id = get_latest_encounter_id(patient_id)
+            amount = get_arc_amount(encounter_id, arc_code)
+
+        elif payment_type == "DEPOSIT":
+            encounter_id = get_latest_encounter_id(patient_id)
+            amount = Decimal(str(payload.get("amount", "0")))
+
+        elif payment_type == "APPOINTMENT":
+            appointment = payload.get("appointment") or {}
+            normalized_appointment = validate_appointment_before_payment(appointment)
+            booking_id = generate_booking_id()
+            normalized_appointment["booking_id"] = booking_id
+            encounter_id = booking_id
+            amount = Decimal(str(normalized_appointment["item_cost"]))
+
+        else:
+            amount = Decimal(str(payload.get("amount", "0")))
+
+        if amount <= 0:
+            return JsonResponse({"success": False, "error": "Amount must be greater than zero"}, status=400)
+
+        purchase_order_id = khalti_generate_order_id()
+        amount_paisa = khalti_amount_to_paisa(amount)
+
+        return_url = django_settings.KHALTI_RETURN_URL
+
+        if payment_type == "BILL":
+            order_name = f"Bill payment {arc_code}"
+        elif payment_type == "DEPOSIT":
+            order_name = "Patient deposit"
+        elif payment_type == "APPOINTMENT":
+            dept = (normalized_appointment or {}).get("department", "")
+            order_name = f"Appointment {dept}".strip()
+        else:
+            order_name = "PatPortal Payment"
+
+        pidx, payment_url, initiate_response = khalti_initiate(
+            purchase_order_id=purchase_order_id,
+            purchase_order_name=order_name,
+            amount_paisa=amount_paisa,
+            return_url=return_url,
+        )
+
+        payment = KhaltiPaymentTransaction.objects.create(
+            payment_type=payment_type,
+            patient_id=patient_id,
+            encounter_id=encounter_id,
+            arc_code=arc_code,
+            purchase_order_id=purchase_order_id,
+            pidx=pidx,
+            amount=amount,
+            amount_paisa=amount_paisa,
+            status="INITIATED",
+            request_payload={
+                "appointment": normalized_appointment,
+                "original_payload": payload,
+            },
+            initiate_response=initiate_response,
+        )
+
+        return JsonResponse({
+            "success": True,
+            "gateway": "KHALTI",
+            "payment_id": payment.id,
+            "payment_type": payment_type,
+            "purchase_order_id": purchase_order_id,
+            "pidx": pidx,
+            "payment_url": payment_url,
+            "amount": str(amount),
+            "amount_paisa": amount_paisa,
+        })
+
+    except GatewayError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=503)
+    except Exception:
+        logger.exception("khalti_initiate_api failed")
+        return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."}, status=400)
+
+
+@csrf_protect
+@require_POST
+def khalti_verify_api(request):
+    """
+    Verifies a Khalti ePay payment after user returns from Khalti gateway.
+
+    Frontend sends:
+    {
+        "pidx": "..."
+    }
+    """
+
+    if not request.user.is_authenticated:
+        return JsonResponse({"success": False, "error": "Authentication required"}, status=401)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        payload = {}
+
+    pidx = payload.get("pidx")
+
+    if not pidx:
+        return JsonResponse({"success": False, "error": "pidx is required"}, status=400)
+
+    try:
+        with transaction.atomic():
+            payment = KhaltiPaymentTransaction.objects.select_for_update().get(
+                pidx=pidx,
+                patient_id=request.user.username,
+            )
+
+            # Already finalized — return stored result without hitting Khalti again
+            if payment.is_finalized and payment.status == "SUCCESS":
+                stored = payment.lookup_response or {}
+                return JsonResponse({
+                    "success": True,
+                    "payment_id": payment.id,
+                    "payment_type": payment.payment_type,
+                    "purchase_order_id": payment.purchase_order_id,
+                    "pidx": payment.pidx,
+                    "amount": str(payment.amount),
+                    "khalti_status": payment.khalti_status,
+                    "transaction_id": payment.transaction_id or "",
+                    "is_paid": True,
+                    "lookup_response": stored,
+                    "booking_confirmation": stored.get("_appointment_confirmation"),
+                    "invoice_no": stored.get("_invoice_no"),
+                    "deposit_no": stored.get("_deposit_no"),
+                })
+
+            lookup_response = khalti_lookup(pidx)
+
+            khalti_status = lookup_response.get("status", "")
+            transaction_id = lookup_response.get("transaction_id") or lookup_response.get("txn_id") or ""
+
+            payment.khalti_status = khalti_status
+            payment.transaction_id = transaction_id
+
+            appointment_confirmation = None
+            invoice_no = None
+            deposit_no = None
+
+            if khalti_status == "Completed":
+                payment.status = "SUCCESS"
+
+                if not payment.is_finalized:
+                    if payment.payment_type == "APPOINTMENT":
+                        appointment_confirmation = create_booking_after_success(
+                            payment=payment,
+                            gateway="KHALTI",
+                        )
+
+                    elif payment.payment_type == "BILL":
+                        check_invoice(
+                            encounter_id=payment.encounter_id,
+                            arc_code=payment.arc_code,
+                        )
+                        invoice_no = create_invoice(
+                            encounter_id=payment.encounter_id,
+                            arc_code=payment.arc_code,
+                            amount=payment.amount,
+                        )
+
+                    elif payment.payment_type == "DEPOSIT":
+                        raw_deposit = create_deposit(
+                            encounter_id=payment.encounter_id,
+                            transaction_no=payment.purchase_order_id,
+                            amount=payment.amount,
+                        )
+                        _assert_valid_deposit_no(raw_deposit, context=f"khalti order={payment.purchase_order_id}")
+                        deposit_no = raw_deposit
+
+                    payment.is_finalized = True
+
+            elif khalti_status in ("User canceled", "Expired"):
+                payment.status = "FAILED"
+            elif khalti_status == "Pending":
+                payment.status = "PENDING"
+            else:
+                payment.status = "FAILED"
+
+            # Store finalization results inside lookup_response for idempotent replay
+            payment.lookup_response = {
+                **lookup_response,
+                "_deposit_no": deposit_no,
+                "_invoice_no": invoice_no,
+                "_appointment_confirmation": appointment_confirmation,
+            }
+
+            payment.save()
+
+        return JsonResponse({
+            "success": True,
+            "payment_id": payment.id,
+            "payment_type": payment.payment_type,
+            "purchase_order_id": payment.purchase_order_id,
+            "pidx": payment.pidx,
+            "amount": str(payment.amount),
+            "khalti_status": payment.khalti_status,
+            "transaction_id": payment.transaction_id,
+            "is_paid": payment.status == "SUCCESS",
+            "lookup_response": lookup_response,
+            "booking_confirmation": appointment_confirmation,
+            "invoice_no": invoice_no,
+            "deposit_no": deposit_no,
+        })
+
+    except KhaltiPaymentTransaction.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Payment transaction not found"}, status=404)
+
+    except GatewayError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=503)
+    except Exception:
+        logger.exception("khalti_verify_api failed")
+        return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."}, status=400)
 

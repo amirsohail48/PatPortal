@@ -37,8 +37,11 @@ def patient_owns_encounter(patient_id, encounter_id):
 
 def patient_can_access_study(patient_id, study_data):
     """
-    Returns True if patient owns the study's encounter (via AccessionNumber)
-    or if the DICOM PatientID matches the portal patient ID.
+    Returns True if any of these match:
+    - Study AccessionNumber is an encounter owned by this patient
+    - DICOM PatientID equals the portal patient ID
+    - DICOM PatientID is an encounter ID owned by this patient
+      (some PACS configurations store encounter IDs as PatientID)
     Mirrors the search logic in find_studies_by_encounter.
     """
     main_tags = study_data.get("MainDicomTags") or {}
@@ -50,6 +53,8 @@ def patient_can_access_study(patient_id, study_data):
     if accession and patient_owns_encounter(patient_id, accession):
         return True
     if dicom_patient_id and dicom_patient_id == patient_id:
+        return True
+    if dicom_patient_id and patient_owns_encounter(patient_id, dicom_patient_id):
         return True
     return False
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import PageHeader from "../components/PageHeader";
 import PageFooter from "../components/PageFooter";
-import { getCookie } from "../utils/cookie";
 
 function getStatusStyle(status) {
   const normalized = String(status || "").toLowerCase();
@@ -90,14 +89,16 @@ export default function GrievancesFeedback() {
       });
 
       const csrfData = await csrfResponse.json();
-      const csrfToken = getCookie("csrftoken") || csrfData.csrfToken;
+      if (!csrfData.csrfToken) {
+        throw new Error("Failed to retrieve CSRF token.");
+      }
 
       const response = await fetch("/api/patients/grievances/create/", {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken,
+          "X-CSRFToken": csrfData.csrfToken,
         },
         body: JSON.stringify({
           message,

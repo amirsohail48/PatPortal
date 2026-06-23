@@ -8,6 +8,7 @@ import PrescriptionPage from "./pages/PrescriptionPage";
 import VisitHistory from "./pages/VisitHistory";
 import Appointment from "./pages/Appointment";
 import ConnectIPSResult from "./pages/ConnectIPSResult";
+import KhaltiResult from "./pages/KhaltiResult";
 import DicomPage from "./pages/DicomPage";
 import ChangePassword from "./pages/ChangePassword";
 import PaymentResult from "./pages/PaymentResult";
@@ -39,6 +40,7 @@ export default function App() {
     "/transactionResponse/failure": <ConnectIPSResult resultType="FAILURE_RETURN" />,
     "/grievances-feedback": <GrievancesFeedback />,
     "/deposit": <DepositPage />,
+    "/khalti-result": <KhaltiResult />,
   };
 
   const page = protectedRoutes[path];

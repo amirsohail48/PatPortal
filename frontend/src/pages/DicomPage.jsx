@@ -186,6 +186,8 @@ export default function DicomPage() {
   };
 
   useEffect(() => {
+    let cancelled = false;
+
     const init = async () => {
       try {
         setLoading(true);
@@ -193,22 +195,28 @@ export default function DicomPage() {
 
         const firstEncounter = await fetchEncounters();
 
-        // First show frontend
+        if (cancelled) return;
+
         setLoading(false);
 
-        // Then load DICOM studies after page is already visible
         if (firstEncounter) {
           setTimeout(() => {
-            fetchStudies(firstEncounter);
+            if (!cancelled) fetchStudies(firstEncounter);
           }, 100);
         }
       } catch (err) {
-        setError(err.message || "Something went wrong");
-        setLoading(false);
+        if (!cancelled) {
+          setError(err.message || "Something went wrong");
+          setLoading(false);
+        }
       }
     };
 
     init();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleEncounterChange = async (event) => {

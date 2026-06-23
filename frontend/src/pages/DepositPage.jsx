@@ -4,22 +4,16 @@ import esewaLogo from "../assets/esewa.png";
 import khalti from "../assets/khalti.png";
 import PageHeader from "../components/PageHeader";
 import PageFooter from "../components/PageFooter";
-import { getCookie } from "../utils/cookie";
-
 async function getCsrfToken() {
-  const existingToken = getCookie("csrftoken");
-
-  if (existingToken) {
-    return existingToken;
-  }
-
   const response = await fetch("/api/csrf/", {
     credentials: "include",
   });
 
   const data = await response.json();
 
-  return getCookie("csrftoken") || data.csrfToken;
+  if (!data.csrfToken) throw new Error("Failed to retrieve CSRF token.");
+
+  return data.csrfToken;
 }
 
 async function readJsonResponse(response, defaultMessage) {
@@ -138,6 +132,11 @@ export default function DepositPage() {
         return;
       }
 
+      if (paymentMode === "KHALTI") {
+        await startKhaltiDepositPayment();
+        return;
+      }
+
       throw new Error("Selected payment method is not available.");
     } catch (error) {
       setError(error.message || "Deposit payment failed.");
@@ -223,6 +222,38 @@ export default function DepositPage() {
     }
 
     submitConnectIPSForm(data.action_url, fields);
+  };
+
+  const startKhaltiDepositPayment = async () => {
+    const csrfToken = await getCsrfToken();
+
+    const response = await fetch("/api/payments/khalti/initiate/", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken,
+      },
+      body: JSON.stringify({
+        payment_type: "DEPOSIT",
+        amount: numericAmount,
+        remarks,
+      }),
+    });
+
+    const data = await readJsonResponse(response, "Failed to start Khalti deposit payment.");
+    if (!data) return;
+
+    sessionStorage.setItem("last_khalti_payment_id", String(data.payment_id || ""));
+    sessionStorage.setItem("last_khalti_pidx", String(data.pidx || ""));
+    sessionStorage.setItem("latest_payment_type", "DEPOSIT");
+    sessionStorage.setItem("latest_payment_gateway", "KHALTI");
+
+    if (!data.payment_url) {
+      throw new Error("No Khalti payment URL received.");
+    }
+
+    window.location.href = data.payment_url;
   };
 
   return (
@@ -378,7 +409,13 @@ export default function DepositPage() {
               <SummaryRow label="Payment Type" value="Deposit" />
               <SummaryRow
                 label="Payment Mode"
-                value={paymentMode === "ESEWA" ? "eSewa" : "connectIPS"}
+                value={
+                  paymentMode === "ESEWA"
+                    ? "eSewa"
+                    : paymentMode === "KHALTI"
+                    ? "Khalti"
+                    : "connectIPS"
+                }
               />
               <SummaryRow label="Remarks" value={remarks || "-"} />
 
