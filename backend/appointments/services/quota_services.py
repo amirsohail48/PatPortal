@@ -310,6 +310,12 @@ def validate_appointment_before_payment(appointment, patient_id=None):
     if not selected_date:
         raise ValueError("Consultation date is required.")
 
+    if date.today() >= selected_date:
+        raise ValueError(
+            f"Booking for {selected_date.strftime('%d %b %Y')} is closed. "
+            "Appointments must be booked before the visit date (by 23:59 the previous day)."
+        )
+
     if patient_id and selected_department and selected_group:
         already_booked = OnlineBooking.objects.filter(
             patient_id=patient_id,
