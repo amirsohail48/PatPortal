@@ -16,6 +16,7 @@ from legacy_hmis.models import (
     Tblpatientinfo,
     Tblwebqueue,
 )
+from appointments.models import OnlineBooking
 
 LEGACY_DB = "legacy_hmis"
 
@@ -88,6 +89,9 @@ def get_payment_reference(payment, gateway):
 
     if gateway == "CONNECTIPS":
         return payment.nchl_txn_id or payment.txn_id
+
+    if gateway == "KHALTI":
+        return payment.transaction_id or payment.purchase_order_id
 
     return ""
 
@@ -171,20 +175,58 @@ def calculate_queue_for_booking(booking):
     }
 
 def build_booking_confirmation(booking, appointment_payload, queue_data):
+    queue_number = queue_data.get("queue_number") if queue_data else None
+    expected_time = queue_data.get("expected_time") if queue_data else None
+    row_index = queue_data.get("row_index") if queue_data else None
+    queue_pending = not bool(queue_number)
+
     return {
         "booking_id": booking.fldbookingval,
-        "queue_number": queue_data.get("queue_number"),
-        "expected_time": queue_data.get("expected_time"),
-        "row_index": queue_data.get("row_index"),
+        "queue_number": queue_number,
+        "expected_time": expected_time,
+        "row_index": row_index,
         "department": booking.fldadmitlocat,
         "group": booking.fldgroup,
         "scheme": booking.flddisctype,
         "consult_date": booking.fldconsultdate.date().isoformat() if booking.fldconsultdate else "",
         "item_name": appointment_payload.get("item_name"),
         "item_cost": str(appointment_payload.get("item_cost") or booking.flditemamt or "0"),
-        "advisory": "Please arrive 15 minutes early.",
-        "message": f"Your queue number is {queue_data.get('queue_number')}",
+        "queue_pending": queue_pending,
+        "advisory": "Please arrive 15 minutes early." if not queue_pending else "",
+        "message": (
+            "Please visit the hospital for your booking detail."
+            if queue_pending
+            else f"Your queue number is {queue_number}"
+        ),
     }
+
+
+def _sync_online_booking(booking, appointment_payload, queue_data):
+    consult_date = None
+    if booking.fldconsultdate:
+        dt = safe_datetime(booking.fldconsultdate)
+        consult_date = dt.date() if dt else None
+
+    OnlineBooking.objects.update_or_create(
+        booking_id=booking.fldbookingval,
+        defaults={
+            "patient_id": clean_text(booking.fldpatientval),
+            "first_name": clean_text(booking.fldptnamefir),
+            "last_name": clean_text(booking.fldptnamelast),
+            "consult_date": consult_date,
+            "department": clean_text(booking.fldadmitlocat),
+            "group": clean_text(booking.fldgroup),
+            "scheme": clean_text(booking.flddisctype),
+            "consultant": clean_text(booking.flduserid),
+            "item_name": clean_text(appointment_payload.get("item_name")),
+            "item_cost": booking.flditemamt,
+            "queue_number": queue_data.get("queue_number") if queue_data else None,
+            "expected_time": queue_data.get("expected_time") if queue_data else "",
+            "state": clean_text(booking.fldstate) or "Booked",
+            "billing_mode": clean_text(booking.fldbillingmode),
+            "payment_reference": clean_text(booking.fldpayreference),
+        },
+    )
 
 
 def create_booking_after_success(payment, gateway):
@@ -215,7 +257,12 @@ def create_booking_after_success(payment, gateway):
     )
 
     if existing_booking:
-        queue_data = calculate_queue_for_booking(existing_booking)
+        try:
+            queue_data = calculate_queue_for_booking(existing_booking)
+        except ValueError as exc:
+            logger.warning("Queue slot unavailable for existing booking %s: %s", booking_id, exc)
+            queue_data = None
+        _sync_online_booking(existing_booking, appointment_payload, queue_data)
         return build_booking_confirmation(
             booking=existing_booking,
             appointment_payload=appointment_payload,
@@ -278,10 +325,16 @@ def create_booking_after_success(payment, gateway):
             fldadmitlocat=department,
             flduserid=consultant,
             flddisctype=scheme,
-            
+
         )
 
+    try:
         queue_data = calculate_queue_for_booking(booking)
+    except ValueError as exc:
+        logger.warning("Queue slot unavailable for new booking %s: %s", booking_id, exc)
+        queue_data = None
+
+    _sync_online_booking(booking, appointment_payload, queue_data)
 
     return build_booking_confirmation(
         booking=booking,

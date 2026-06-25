@@ -1,8 +1,51 @@
-import { useState,useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import hospitalLogo from "../assets/hospital-logo.png";
 import pahsImage from "../assets/pahs1.jpeg";
 import PageFooter from "../components/PageFooter";
 import { getCookie } from "../utils/cookie";
+
+function formatDate(iso) {
+    if (!iso) return "-";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function AppointmentCard({ appt }) {
+    const hasQueue = appt.queue_number != null;
+    return (
+        <div className="bg-white border border-emerald-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="bg-emerald-600 text-white px-4 py-2 flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider">{appt.department || appt.group || "Appointment"}</span>
+                <span className="text-xs text-emerald-100">{formatDate(appt.consult_date)}</span>
+            </div>
+            <div className="p-4 flex gap-4 items-center">
+                <div className="text-center shrink-0 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 min-w-[72px]">
+                    {hasQueue ? (
+                        <>
+                            <p className="text-[10px] uppercase text-gray-400 font-bold">Queue</p>
+                            <p className="text-3xl font-black text-emerald-700 leading-none mt-1">{appt.queue_number}</p>
+                            {appt.expected_time && (
+                                <p className="text-xs font-bold text-[#052f48] mt-1">{appt.expected_time}</p>
+                            )}
+                        </>
+                    ) : (
+                        <p className="text-[10px] text-amber-600 font-bold leading-tight">Visit Hospital</p>
+                    )}
+                </div>
+                <div className="flex-1 text-sm space-y-1 min-w-0">
+                    {appt.department && <p className="text-gray-700 font-semibold truncate">{appt.department}</p>}
+                    {appt.group && appt.group !== appt.department && (
+                        <p className="text-gray-500 text-xs truncate">{appt.group}</p>
+                    )}
+                    {appt.scheme && <p className="text-gray-500 text-xs">Scheme: {appt.scheme}</p>}
+                    {appt.item_name && <p className="text-gray-500 text-xs truncate">{appt.item_name}</p>}
+                    <p className="text-[10px] text-gray-400 font-mono">{appt.booking_id}</p>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export default function HomePage() {
     const [hospitalName, setHospitalName] = useState("D-Code technology Pvt. Ltd.");
@@ -11,6 +54,7 @@ export default function HomePage() {
     const [currentDeposit, setCurrentDeposit] = useState("0.00");
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [logoutError, setLogoutError] = useState("");
+    const [upcomingAppointments, setUpcomingAppointments] = useState([]);
 
     const fetchCurrentDeposit = async () => {
         try {
@@ -33,6 +77,18 @@ export default function HomePage() {
         }
         };
 
+    const fetchUpcomingAppointments = async () => {
+        try {
+            const response = await fetch("/api/appointments/upcoming/", { credentials: "include" });
+            const data = await response.json();
+            if (data.success) {
+                setUpcomingAppointments(data.appointments || []);
+            }
+        } catch {
+            // silently ignore — non-critical
+        }
+    };
+
     useEffect(() => {
         fetch("/api/auth/status/", {
         credentials: "include",
@@ -46,6 +102,7 @@ export default function HomePage() {
         setHospitalName(data.hospital_name || "D-Code technology Pvt. Ltd.");
         setPatientId(data.patient_id);
         fetchCurrentDeposit();
+        fetchUpcomingAppointments();
         return fetch("/api/patients/profile/",{
             credentials:"include",
         });
@@ -249,6 +306,21 @@ export default function HomePage() {
                 {logoutError}
               </div>
             )}
+            {/* Upcoming Appointments */}
+            {upcomingAppointments.length > 0 && (
+                <div className="mb-8">
+                    <div className="mb-4">
+                        <h3 className="text-lg font-bold text-[#052f48] uppercase tracking-wider">Upcoming Appointments</h3>
+                        <div className="h-1 w-16 bg-emerald-500 mt-1 rounded-full" />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {upcomingAppointments.map((appt) => (
+                            <AppointmentCard key={appt.booking_id} appt={appt} />
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Section Title */}
             <div className="mb-6">
             <h3 className="text-lg font-bold text-[#052f48] uppercase tracking-wider">Patient Services</h3>

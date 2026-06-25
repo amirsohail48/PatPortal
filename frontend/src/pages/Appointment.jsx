@@ -1176,6 +1176,10 @@ function AppointmentPreviewModal({
             label="Payable Amount"
             value={`NPR ${formatMoney(selectedQuota?.item_cost)}`}
           />
+          <PreviewRow
+            label=""
+            value={`This is non refundable and non transferable booking.`}
+          />
         </div>
 
         <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-3 sm:justify-end">

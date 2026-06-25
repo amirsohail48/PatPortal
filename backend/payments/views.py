@@ -275,7 +275,7 @@ def esewa_initiate_appointment_payment_api(request):
         patient_id = request.user.username
         appointment = payload.get("appointment") or {}
 
-        normalized_appointment = validate_appointment_before_payment(appointment)
+        normalized_appointment = validate_appointment_before_payment(appointment, patient_id=patient_id)
 
         booking_id = generate_booking_id()
         normalized_appointment["booking_id"] = booking_id
@@ -633,7 +633,7 @@ def connectips_initiate_api(request):
 
         elif payment_type == "APPOINTMENT":
             appointment = payload.get("appointment") or {}
-            normalized_appointment = validate_appointment_before_payment(appointment)
+            normalized_appointment = validate_appointment_before_payment(appointment, patient_id=patient_id)
             booking_id = generate_booking_id()
             normalized_appointment["booking_id"] = booking_id
             amount = Decimal(str(normalized_appointment["item_cost"]))
@@ -991,7 +991,7 @@ def khalti_initiate_api(request):
 
         elif payment_type == "APPOINTMENT":
             appointment = payload.get("appointment") or {}
-            normalized_appointment = validate_appointment_before_payment(appointment)
+            normalized_appointment = validate_appointment_before_payment(appointment, patient_id=patient_id)
             booking_id = generate_booking_id()
             normalized_appointment["booking_id"] = booking_id
             encounter_id = booking_id

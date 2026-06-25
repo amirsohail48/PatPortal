@@ -58,7 +58,7 @@ def khalti_initiate(purchase_order_id, purchase_order_name, amount_paisa, return
 
     if response.status_code >= 400:
         logger.error("Khalti initiate failed status=%s body=%s", response.status_code, data)
-        if response.status_code in (502, 503, 504):
+        if response.status_code in (500, 502, 503, 504):
             raise GatewayError("Khalti payment service is temporarily unavailable. Please try again later.")
         detail = data.get("detail") or data.get("error") or "Please try again."
         raise GatewayError(f"Khalti payment initiation failed: {detail}")
@@ -100,7 +100,7 @@ def khalti_lookup(pidx):
 
     if response.status_code >= 400:
         logger.error("Khalti lookup failed status=%s body=%s", response.status_code, data)
-        if response.status_code in (502, 503, 504):
+        if response.status_code in (500, 502, 503, 504):
             raise GatewayError("Khalti payment service is temporarily unavailable. Please try again later.")
         detail = data.get("detail") or data.get("error") or "Please try again."
         raise GatewayError(f"Khalti payment verification failed: {detail}")

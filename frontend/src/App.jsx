@@ -7,8 +7,6 @@ import InvoicesReceipts from "./pages/InvoicesReceipts";
 import PrescriptionPage from "./pages/PrescriptionPage";
 import VisitHistory from "./pages/VisitHistory";
 import Appointment from "./pages/Appointment";
-import ConnectIPSResult from "./pages/ConnectIPSResult";
-import KhaltiResult from "./pages/KhaltiResult";
 import DicomPage from "./pages/DicomPage";
 import ChangePassword from "./pages/ChangePassword";
 import PaymentResult from "./pages/PaymentResult";
@@ -32,15 +30,15 @@ export default function App() {
     "/prescriptions": <PrescriptionPage />,
     "/visit-history": <VisitHistory />,
     "/appointments": <Appointment />,
-    "/connectips-result": <ConnectIPSResult />,
     "/dicom": <DicomPage />,
     "/change-password": <ChangePassword />,
     "/payment-result": <PaymentResult />,
-    "/transactionResponse/success": <ConnectIPSResult resultType="SUCCESS_RETURN" />,
-    "/transactionResponse/failure": <ConnectIPSResult resultType="FAILURE_RETURN" />,
+    "/khalti-result": <PaymentResult />,
+    "/connectips-result": <PaymentResult />,
+    "/transactionResponse/success": <PaymentResult />,
+    "/transactionResponse/failure": <PaymentResult />,
     "/grievances-feedback": <GrievancesFeedback />,
     "/deposit": <DepositPage />,
-    "/khalti-result": <KhaltiResult />,
   };
 
   const page = protectedRoutes[path];

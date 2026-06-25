@@ -238,8 +238,8 @@ export default function PatientProfile() {
 
                 <div className="p-5 flex-1 space-y-3.5 text-sm">
                   <SmallProfileValue
-                    label="Provider / Scheme"
-                    value={patient?.discount || patient?.category}
+                    label="Provider"
+                    value={patient?.discount || "-"}
                   />
 
                   <div>

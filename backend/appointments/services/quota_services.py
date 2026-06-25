@@ -1,4 +1,4 @@
-from datetime import datetime, time, timedelta
+from datetime import datetime, date, time, timedelta
 from decimal import Decimal
 
 from django.utils import timezone
@@ -13,6 +13,7 @@ from legacy_hmis.models import (
     Tblwebqueue,
     Tbluser,
 )
+from appointments.models import OnlineBooking
 
 LEGACY_DB = "legacy_hmis"
 
@@ -282,7 +283,7 @@ def get_quota_by_id(quota_id):
     return serialize_quota(quota)
 
 
-def validate_appointment_before_payment(appointment):
+def validate_appointment_before_payment(appointment, patient_id=None):
     """
     Called before payment initiation.
 
@@ -308,6 +309,20 @@ def validate_appointment_before_payment(appointment):
 
     if not selected_date:
         raise ValueError("Consultation date is required.")
+
+    if patient_id and selected_department and selected_group:
+        already_booked = OnlineBooking.objects.filter(
+            patient_id=patient_id,
+            group=selected_group,
+            department=selected_department,
+            consult_date__gte=date.today(),
+        ).exists()
+
+        if already_booked:
+            raise ValueError(
+                f"You already have an upcoming appointment in {selected_department} ({selected_group}). "
+                "Please complete your existing appointment before booking a new one."
+            )
 
     quota = Tblquota.objects.using(LEGACY_DB).get(fldid=quota_id)
 
