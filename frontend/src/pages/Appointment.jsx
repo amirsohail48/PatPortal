@@ -126,6 +126,7 @@ export default function AppointmentPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPaymentMode, setSelectedPaymentMode] = useState("ESEWA");
 
+  const [upcomingBookings, setUpcomingBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [paying, setPaying] = useState(false);
@@ -171,6 +172,15 @@ export default function AppointmentPage() {
       });
   }, [quotas, selectedDepartment, selectedConsultant]);
   
+  const bookedDeptGroupKeys = useMemo(() => {
+    const today = new Date().toISOString().split("T")[0];
+    return new Set(
+      upcomingBookings
+        .filter((b) => b.consult_date >= today)
+        .map((b) => `${b.group}|${b.department}`)
+    );
+  }, [upcomingBookings]);
+
   const loadQuotaOptions = async (params = {}) => {
     const response = await fetch(
       `/api/appointments/quota-options/${buildQuery(params)}`,
@@ -197,11 +207,19 @@ export default function AppointmentPage() {
     try {
       setLoading(true);
       setError("");
-      
-      const initialQuotas = await loadQuotaOptions({});
+
+      const [initialQuotas, upcomingRes] = await Promise.all([
+        loadQuotaOptions({}),
+        fetch("/api/appointments/upcoming/", { credentials: "include" }),
+      ]);
 
       setQuotas(initialQuotas);
       setGroupOptions(buildGroupOptions(initialQuotas));
+
+      if (upcomingRes.ok) {
+        const upcomingData = await upcomingRes.json();
+        if (upcomingData.success) setUpcomingBookings(upcomingData.appointments || []);
+      }
     } catch (err) {
       setError(err.message || "Failed to load appointment options.");
     } finally {
@@ -418,6 +436,13 @@ export default function AppointmentPage() {
 
     if (Number(selectedQuota.remaining_slots || 0) <= 0) {
       setError("No slot available for selected appointment.");
+      return;
+    }
+
+    if (bookedDeptGroupKeys.has(`${selectedGroup}|${selectedDepartment}`)) {
+      setError(
+        `You already have an upcoming appointment in ${selectedDepartment} (${selectedGroup}). Please complete your existing appointment before booking a new one.`
+      );
       return;
     }
 
@@ -725,15 +750,21 @@ export default function AppointmentPage() {
                 {departmentCards.length === 0 ? (
                   <EmptyState message="No department available for selected scheme." />
                 ) : (
-                  departmentCards.map((department) => (
-                    <DepartmentCard
-                      key={department.department}
-                      data={department}
-                      selected={selectedDepartment === department.department}
-                      onClick={() => handleSelectDepartment(department.department)}
-                      disabled={loadingOptions}
-                    />
-                  ))
+                  departmentCards.map((department) => {
+                    const alreadyBooked = bookedDeptGroupKeys.has(
+                      `${selectedGroup}|${department.department}`
+                    );
+                    return (
+                      <DepartmentCard
+                        key={department.department}
+                        data={department}
+                        selected={selectedDepartment === department.department}
+                        onClick={() => handleSelectDepartment(department.department)}
+                        disabled={loadingOptions || alreadyBooked}
+                        alreadyBooked={alreadyBooked}
+                      />
+                    );
+                  })
                 )}
               </div>
             </section>
@@ -844,6 +875,7 @@ export default function AppointmentPage() {
             selectedScheme={selectedScheme}
             selectedDepartment={selectedDepartment}
             selectedConsultant={selectedConsultant}
+            alreadyBooked={bookedDeptGroupKeys.has(`${selectedGroup}|${selectedDepartment}`)}
             onClose={() => setShowPreviewModal(false)}
             onProceed={() => {
               setShowPreviewModal(false);
@@ -1003,25 +1035,39 @@ function OptionCard({ title, subtitle, selected, onClick, disabled }) {
   );
 }
 
-function DepartmentCard({ data, selected, onClick, disabled }) {
+function DepartmentCard({ data, selected, onClick, disabled, alreadyBooked }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       className={`text-left rounded-2xl border p-5 transition ${
-        selected
+        alreadyBooked
+          ? "border-amber-300 bg-amber-50 cursor-not-allowed"
+          : selected
           ? "border-[#052f48] bg-[#052f48]/5 shadow-md"
           : "border-gray-200 bg-gray-50 hover:bg-white hover:shadow-sm"
-      } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+      } ${disabled && !alreadyBooked ? "opacity-60 cursor-not-allowed" : ""}`}
     >
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-lg font-black text-[#052f48]">
           {data.department}
         </h3>
 
-        <SelectionCircle selected={selected} />
+        {alreadyBooked ? (
+          <span className="text-xs bg-amber-100 text-amber-700 border border-amber-300 rounded-full px-2 py-1 font-bold whitespace-nowrap">
+            Already Booked
+          </span>
+        ) : (
+          <SelectionCircle selected={selected} />
+        )}
       </div>
+
+      {alreadyBooked && (
+        <p className="text-xs text-amber-600 mt-2 font-semibold">
+          You have an upcoming appointment in this department.
+        </p>
+      )}
     </button>
   );
 }
@@ -1123,6 +1169,7 @@ function AppointmentPreviewModal({
   selectedScheme,
   selectedDepartment,
   selectedConsultant,
+  alreadyBooked,
   onClose,
   onProceed,
 }) {
@@ -1145,6 +1192,20 @@ function AppointmentPreviewModal({
             ×
           </button>
         </div>
+
+        {alreadyBooked && (
+          <div className="mx-5 mt-4 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex gap-3 items-start">
+            <span className="text-amber-500 text-xl leading-none mt-0.5">&#9888;</span>
+            <div>
+              <p className="text-sm font-bold text-amber-800">Already Booked</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                You already have an upcoming appointment in{" "}
+                <span className="font-bold">{selectedDepartment}</span> ({selectedGroup}). Complete your
+                existing appointment before booking a new one.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="p-5 space-y-3 text-sm">
           <PreviewRow label="Group" value={selectedGroup} />
@@ -1194,7 +1255,12 @@ function AppointmentPreviewModal({
           <button
             type="button"
             onClick={onProceed}
-            className="px-6 py-3 rounded-xl bg-[#052f48] hover:bg-[#254a60] text-white font-black shadow-md transition"
+            disabled={alreadyBooked}
+            className={`px-6 py-3 rounded-xl font-black shadow-md transition text-white ${
+              alreadyBooked
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-[#052f48] hover:bg-[#254a60]"
+            }`}
           >
             Verify & Proceed to Payment
           </button>

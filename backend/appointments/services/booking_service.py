@@ -306,11 +306,9 @@ def create_booking_after_success(payment, gateway):
 
             fldptadmindate=safe_datetime(now_time),
             fldconsultdate=safe_datetime(consult_date),
-            #flduserid=appointment_payload.get("consultant") or "",
             fldcomp="WEB",
-            fldstate="Booked",
+            fldstate="Paid",
 
-            #flddisctype=appointment_payload.get("scheme"),
             fldbillingmode=gateway,
             fldorduserid=patient_id,
             fldpayreference=payment_reference,
@@ -321,7 +319,7 @@ def create_booking_after_success(payment, gateway):
             fldremotemail=None,
             fldhashcode=uuid.uuid4().hex,
             flditemamt=float(payment_amount),
-            fldgroup=group, #appointment_payload.get("group"),
+            fldgroup=group,
             fldadmitlocat=department,
             flduserid=consultant,
             flddisctype=scheme,

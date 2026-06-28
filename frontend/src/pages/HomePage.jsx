@@ -55,6 +55,8 @@ export default function HomePage() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [logoutError, setLogoutError] = useState("");
     const [upcomingAppointments, setUpcomingAppointments] = useState([]);
+    const [followUps, setFollowUps] = useState([]);
+    const [plannedProcedures, setPlannedProcedures] = useState([]);
 
     const fetchCurrentDeposit = async () => {
         try {
@@ -89,6 +91,30 @@ export default function HomePage() {
         }
     };
 
+    const fetchFollowUps = async () => {
+        try {
+            const response = await fetch("/api/patients/follow-up/", { credentials: "include" });
+            const data = await response.json();
+            if (data.success) {
+                setFollowUps(data.follow_ups || []);
+            }
+        } catch {
+            // silently ignore — non-critical
+        }
+    };
+
+    const fetchPlannedProcedures = async () => {
+        try {
+            const response = await fetch("/api/patients/planned-procedures/", { credentials: "include" });
+            const data = await response.json();
+            if (data.success) {
+                setPlannedProcedures(data.procedures || []);
+            }
+        } catch {
+            // silently ignore — non-critical
+        }
+    };
+
     useEffect(() => {
         fetch("/api/auth/status/", {
         credentials: "include",
@@ -103,6 +129,8 @@ export default function HomePage() {
         setPatientId(data.patient_id);
         fetchCurrentDeposit();
         fetchUpcomingAppointments();
+        fetchFollowUps();
+        fetchPlannedProcedures();
         return fetch("/api/patients/profile/",{
             credentials:"include",
         });
@@ -306,18 +334,92 @@ export default function HomePage() {
                 {logoutError}
               </div>
             )}
-            {/* Upcoming Appointments */}
-            {upcomingAppointments.length > 0 && (
-                <div className="mb-8">
-                    <div className="mb-4">
-                        <h3 className="text-lg font-bold text-[#052f48] uppercase tracking-wider">Upcoming Appointments</h3>
-                        <div className="h-1 w-16 bg-emerald-500 mt-1 rounded-full" />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {upcomingAppointments.map((appt) => (
-                            <AppointmentCard key={appt.booking_id} appt={appt} />
-                        ))}
-                    </div>
+            {/* Upcoming Appointments + Follow-Up Reminders — side by side on desktop */}
+            {(upcomingAppointments.length > 0 || followUps.length > 0 || plannedProcedures.length > 0) && (
+                <div className="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                    {/* Upcoming Appointments */}
+                    {upcomingAppointments.length > 0 && (
+                        <div>
+                            <div className="mb-4">
+                                <h3 className="text-lg font-bold text-[#052f48] uppercase tracking-wider">Upcoming Appointments</h3>
+                                <div className="h-1 w-16 bg-emerald-500 mt-1 rounded-full" />
+                            </div>
+                            <div className="flex flex-col gap-4">
+                                {upcomingAppointments.map((appt) => (
+                                    <AppointmentCard key={appt.booking_id} appt={appt} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Follow-Up Reminders */}
+                    {followUps.length > 0 && (
+                        <div>
+                            <div className="mb-4">
+                                <h3 className="text-lg font-bold text-amber-700 uppercase tracking-wider">Follow-Up Reminders</h3>
+                                <div className="h-1 w-16 bg-amber-400 mt-1 rounded-full" />
+                            </div>
+                            <div className="flex flex-col gap-4">
+                                {followUps.map((fu) => (
+                                    <div key={fu.consult_id} className="bg-white border border-amber-200 rounded-xl overflow-hidden shadow-sm">
+                                        <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between">
+                                            <span className="text-xs font-bold uppercase tracking-wider">Follow-Up Required</span>
+                                            <span className="text-xs text-amber-100">{formatDate(fu.follow_date)}</span>
+                                        </div>
+                                        <div className="p-4 flex gap-4 items-start">
+                                            <div className="text-center shrink-0 bg-amber-50 border border-amber-100 rounded-xl px-3 py-3 min-w-[72px]">
+                                                <p className="text-[10px] uppercase text-gray-400 font-bold">Date</p>
+                                                <p className="text-xs font-black text-amber-700 leading-snug mt-1">{formatDate(fu.follow_date)}</p>
+                                            </div>
+                                            <div className="flex-1 text-sm space-y-1 min-w-0">
+                                                {fu.doctor && <p className="text-gray-700 font-semibold truncate">{fu.doctor}</p>}
+                                                {fu.comment && <p className="text-gray-500 text-xs truncate">{fu.comment}</p>}
+                                                {fu.notice && <p className="text-gray-500 text-xs truncate">{fu.notice}</p>}
+                                                <p className="text-[10px] text-gray-400 font-mono">Enc: {fu.encounter_id}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Planned Procedures */}
+                    {plannedProcedures.length > 0 && (
+                        <div>
+                            <div className="mb-4">
+                                <h3 className="text-lg font-bold text-violet-700 uppercase tracking-wider">Planned Procedures</h3>
+                                <div className="h-1 w-16 bg-violet-400 mt-1 rounded-full" />
+                            </div>
+                            <div className="flex flex-col gap-4">
+                                {plannedProcedures.map((proc) => (
+                                    <div key={proc.id} className="bg-white border border-violet-200 rounded-xl overflow-hidden shadow-sm">
+                                        <div className="bg-violet-600 text-white px-4 py-2 flex items-center justify-between">
+                                            <span className="text-xs font-bold uppercase tracking-wider">Planned Procedure</span>
+                                            <span className="text-xs text-violet-200">{formatDate(proc.scheduled_date)}</span>
+                                        </div>
+                                        <div className="p-4 flex gap-4 items-start">
+                                            <div className="text-center shrink-0 bg-violet-50 border border-violet-100 rounded-xl px-3 py-3 min-w-[72px]">
+                                                <p className="text-[10px] uppercase text-gray-400 font-bold">Date</p>
+                                                <p className="text-xs font-black text-violet-700 leading-snug mt-1">{formatDate(proc.scheduled_date)}</p>
+                                            </div>
+                                            <div className="flex-1 text-sm space-y-1 min-w-0">
+                                                <p className="text-gray-700 font-semibold truncate">{proc.item}</p>
+                                                {proc.status && (
+                                                    <span className="inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">
+                                                        {proc.status}
+                                                    </span>
+                                                )}
+                                                {proc.ordered_by && <p className="text-gray-500 text-xs">By: {proc.ordered_by}</p>}
+                                                <p className="text-[10px] text-gray-400 font-mono">Enc: {proc.encounter_id}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

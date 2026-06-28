@@ -162,9 +162,9 @@ def update_password_api(request):
     except Exception:
         payload = {}
 
-    current_password = str(payload.get("current_password", ""))
-    new_password = str(payload.get("new_password", ""))
-    confirm_password = str(payload.get("confirm_password", ""))
+    current_password = str(payload.get("current_password", "")).strip()
+    new_password = str(payload.get("new_password", "")).strip()
+    confirm_password = str(payload.get("confirm_password", "")).strip()
 
     if not current_password:
         return JsonResponse({

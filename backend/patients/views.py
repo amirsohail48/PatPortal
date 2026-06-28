@@ -4,9 +4,10 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET,require_POST
+from datetime import date
 
 logger = logging.getLogger(__name__)
-from legacy_hmis.models import Tblpatientinfo,Tblgrievances
+from legacy_hmis.models import Tblpatientinfo, Tblgrievances, Tblconsult, Tblpatgeneral
 from patients.services.visit_history_service import get_visit_history
 from patients.services.encounter_service import get_patient_encounters
 
@@ -45,8 +46,6 @@ def grievance_display_data(status, response_text):
 def calculate_age(birth_date):
     if not birth_date:
         return None
-
-    from datetime import date
 
     today = date.today()
     birth_date = birth_date.date() if hasattr(birth_date, "date") else birth_date
@@ -263,6 +262,7 @@ def grievance_create_api(request):
         fldgrievance=message,
         fldstatus="New",
         fldresponse="",
+        fldtime=timezone.now(),
     )
 
     return JsonResponse({
@@ -280,3 +280,86 @@ def grievance_create_api(request):
             "card_color": "grey",
         },
     })
+
+
+@require_GET
+def follow_up_info_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"success": False, "error": "Authentication required"}, status=401)
+
+    try:
+        patient_id = request.user.username
+        from patients.services.encounter_service import get_patient_encounter_ids
+
+        encounter_ids = get_patient_encounter_ids(patient_id)
+        if not encounter_ids:
+            return JsonResponse({"success": True, "follow_ups": []})
+
+        follow_ups = (
+            Tblconsult.objects.filter(
+                fldencounterval__in=encounter_ids,
+                fldoutcome="Follow Up",
+                fldfollowdate__isnull=False,
+            )
+            .order_by("-fldfollowdate")
+        )
+
+        data = [
+            {
+                "consult_id": str(item.fldid),
+                "encounter_id": item.fldencounterval or "",
+                "doctor": item.fldconsultname or "",
+                "follow_date": item.fldfollowdate.strftime("%Y-%m-%d") if item.fldfollowdate else "",
+                "comment": item.fldcomment or "",
+                "notice": item.fldnotice or "",
+            }
+            for item in follow_ups
+        ]
+
+        return JsonResponse({"success": True, "follow_ups": data})
+
+    except Exception:
+        logger.exception("follow_up_info_api failed")
+        return JsonResponse({"success": False, "error": "An unexpected error occurred."}, status=500)
+
+
+@require_GET
+def planned_procedures_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"success": False, "error": "Authentication required"}, status=401)
+
+    try:
+        patient_id = request.user.username
+        from patients.services.encounter_service import get_patient_encounter_ids
+
+        encounter_ids = get_patient_encounter_ids(patient_id)
+        if not encounter_ids:
+            return JsonResponse({"success": True, "procedures": []})
+
+        procedures = (
+            Tblpatgeneral.objects.filter(
+                fldencounterval__in=encounter_ids,
+                fldinput="Procedures",
+                fldreportquali="Planned",
+            )
+            .order_by("fldnewdate")
+        )
+
+        data = [
+            {
+                "id": str(item.fldid),
+                "encounter_id": item.fldencounterval or "",
+                "item": item.flditem or "",
+                "status": item.fldstatus or "",
+                "scheduled_date": item.fldnewdate.strftime("%Y-%m-%d") if item.fldnewdate else "",
+                "group_id": item.fldgroupid,
+                "ordered_by": item.flduserid or "",
+            }
+            for item in procedures
+        ]
+
+        return JsonResponse({"success": True, "procedures": data})
+
+    except Exception:
+        logger.exception("planned_procedures_api failed")
+        return JsonResponse({"success": False, "error": "An unexpected error occurred."}, status=500)
