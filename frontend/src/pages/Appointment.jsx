@@ -4,6 +4,7 @@ import connectipsLogo from "../assets/connectIPS.png"
 import khaltiLogo from "../assets/khalti.png"
 import PageHeader from "../components/PageHeader";
 import PageFooter from "../components/PageFooter";
+import RescheduleModal from "../components/RescheduleModal";
 
 const GROUP_DESCRIPTIONS = {
   "General OPD":
@@ -131,6 +132,7 @@ export default function AppointmentPage() {
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
+  const [rescheduleBookingId, setRescheduleBookingId] = useState(null);
 
   const selectedQuota = useMemo(() => {
     return quotas.find((item) => String(item.id) === String(selectedQuotaId));
@@ -353,6 +355,16 @@ export default function AppointmentPage() {
       setError(err.message || "Failed to load date slots.");
     } finally {
       setLoadingOptions(false);
+    }
+  };
+
+  const refreshUpcomingBookings = async () => {
+    try {
+      const res = await fetch("/api/appointments/upcoming/", { credentials: "include" });
+      const data = await res.json();
+      if (data.success) setUpcomingBookings(data.appointments || []);
+    } catch {
+      // silently ignore
     }
   };
 
@@ -657,6 +669,45 @@ export default function AppointmentPage() {
       </section>
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        {/* My Upcoming Bookings */}
+        {upcomingBookings.length > 0 && (
+          <div className="mb-8">
+            <div className="mb-4">
+              <h3 className="text-lg font-bold text-[#052f48] uppercase tracking-wider">My Upcoming Bookings</h3>
+              <div className="h-1 w-16 bg-emerald-500 mt-1 rounded-full" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {upcomingBookings.map((b) => (
+                <div key={b.booking_id} className="bg-white border border-emerald-200 rounded-xl overflow-hidden shadow-sm">
+                  <div className="bg-emerald-600 text-white px-4 py-2 flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider">{b.department || b.group}</span>
+                    <span className="text-xs text-emerald-100">{formatDate(b.consult_date)}</span>
+                  </div>
+                  <div className="p-4 text-sm space-y-1">
+                    {b.group && <p className="text-gray-500 text-xs">{b.group}</p>}
+                    {b.scheme && <p className="text-gray-500 text-xs">Scheme: {displayScheme(b.scheme)}</p>}
+                    {b.item_name && <p className="text-gray-500 text-xs truncate">{b.item_name}</p>}
+                    {b.queue_number != null && (
+                      <p className="text-emerald-700 font-bold text-xs">Queue: {b.queue_number}{b.expected_time ? ` · ${b.expected_time}` : ""}</p>
+                    )}
+                    <p className="text-[10px] text-gray-400 font-mono">{b.booking_id}</p>
+                  </div>
+                  <div className="border-t border-emerald-100 px-4 py-2 bg-emerald-50/50">
+                    <button
+                      type="button"
+                      onClick={() => setRescheduleBookingId(b.booking_id)}
+                      className="text-xs font-bold text-emerald-700 hover:text-emerald-900 transition"
+                    >
+                      Reschedule ›
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <StepProgress
           selectedGroup={selectedGroup}
           selectedScheme={selectedScheme}
@@ -899,6 +950,17 @@ export default function AppointmentPage() {
             }
           }}
           onProceed={handleProceedPayment}
+        />
+      )}
+
+      {rescheduleBookingId && (
+        <RescheduleModal
+          bookingId={rescheduleBookingId}
+          onClose={() => setRescheduleBookingId(null)}
+          onSuccess={() => {
+            setRescheduleBookingId(null);
+            refreshUpcomingBookings();
+          }}
         />
       )}
     </div>

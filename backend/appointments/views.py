@@ -11,6 +11,7 @@ from appointments.services.quota_services import (
     get_quota_by_id,
 )
 from appointments.services.queue_service import calculate_patient_queue
+from appointments.services.reschedule_service import get_reschedule_options, reschedule_booking
 
 @require_GET
 def quota_options_api(request):
@@ -148,3 +149,49 @@ def upcoming_appointments_api(request):
 
     except Exception as error:
         return JsonResponse({"success": False, "error": str(error)}, status=400)
+
+
+@require_GET
+def reschedule_options_api(request, booking_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({"success": False, "error": "Authentication required"}, status=401)
+
+    try:
+        data = get_reschedule_options(booking_id=booking_id, patient_id=request.user.username)
+        return JsonResponse({"success": True, **data})
+    except ValueError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=400)
+    except Exception:
+        return JsonResponse({"success": False, "error": "An unexpected error occurred."}, status=500)
+
+
+@csrf_protect
+@require_POST
+def reschedule_booking_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"success": False, "error": "Authentication required"}, status=401)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        payload = {}
+
+    booking_id = str(payload.get("booking_id", "")).strip()
+    quota_id = payload.get("quota_id")
+
+    if not booking_id:
+        return JsonResponse({"success": False, "error": "booking_id is required."}, status=400)
+    if not quota_id:
+        return JsonResponse({"success": False, "error": "quota_id is required."}, status=400)
+
+    try:
+        result = reschedule_booking(
+            booking_id=booking_id,
+            patient_id=request.user.username,
+            quota_id=int(quota_id),
+        )
+        return JsonResponse({"success": True, "booking": result})
+    except ValueError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=400)
+    except Exception:
+        return JsonResponse({"success": False, "error": "An unexpected error occurred."}, status=500)

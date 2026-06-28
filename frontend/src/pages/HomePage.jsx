@@ -3,6 +3,7 @@ import hospitalLogo from "../assets/hospital-logo.png";
 import pahsImage from "../assets/pahs1.jpeg";
 import PageFooter from "../components/PageFooter";
 import { getCookie } from "../utils/cookie";
+import RescheduleModal from "../components/RescheduleModal";
 
 function formatDate(iso) {
     if (!iso) return "-";
@@ -11,7 +12,7 @@ function formatDate(iso) {
     return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function AppointmentCard({ appt }) {
+function AppointmentCard({ appt, onReschedule }) {
     const hasQueue = appt.queue_number != null;
     return (
         <div className="bg-white border border-emerald-200 rounded-xl overflow-hidden shadow-sm">
@@ -43,6 +44,17 @@ function AppointmentCard({ appt }) {
                     <p className="text-[10px] text-gray-400 font-mono">{appt.booking_id}</p>
                 </div>
             </div>
+            {onReschedule && (
+                <div className="border-t border-emerald-100 px-4 py-2 bg-emerald-50/50">
+                    <button
+                        type="button"
+                        onClick={() => onReschedule(appt.booking_id)}
+                        className="text-xs font-bold text-emerald-700 hover:text-emerald-900 transition"
+                    >
+                        Reschedule ›
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
@@ -57,6 +69,7 @@ export default function HomePage() {
     const [upcomingAppointments, setUpcomingAppointments] = useState([]);
     const [followUps, setFollowUps] = useState([]);
     const [plannedProcedures, setPlannedProcedures] = useState([]);
+    const [rescheduleBookingId, setRescheduleBookingId] = useState(null);
 
     const fetchCurrentDeposit = async () => {
         try {
@@ -347,7 +360,11 @@ export default function HomePage() {
                             </div>
                             <div className="flex flex-col gap-4">
                                 {upcomingAppointments.map((appt) => (
-                                    <AppointmentCard key={appt.booking_id} appt={appt} />
+                                    <AppointmentCard
+                                        key={appt.booking_id}
+                                        appt={appt}
+                                        onReschedule={(id) => setRescheduleBookingId(id)}
+                                    />
                                 ))}
                             </div>
                         </div>
@@ -486,6 +503,16 @@ export default function HomePage() {
         {/* 4. INSTITUTIONAL FOOTER */}
         <PageFooter/>
 
+        {rescheduleBookingId && (
+            <RescheduleModal
+                bookingId={rescheduleBookingId}
+                onClose={() => setRescheduleBookingId(null)}
+                onSuccess={() => {
+                    setRescheduleBookingId(null);
+                    fetchUpcomingAppointments();
+                }}
+            />
+        )}
         </div>
     );
 }

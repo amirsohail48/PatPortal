@@ -341,6 +341,8 @@ def esewa_initiate_appointment_payment_api(request):
 
     except GatewayError as error:
         return JsonResponse({"success": False, "error": str(error)}, status=503)
+    except ValueError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=400)
     except Exception:
         logger.exception("esewa_initiate_appointment_payment_api failed")
         return JsonResponse({
@@ -694,6 +696,8 @@ def connectips_initiate_api(request):
 
     except GatewayError as error:
         return JsonResponse({"success": False, "error": str(error)}, status=503)
+    except ValueError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=400)
     except Exception:
         logger.exception("connectips_initiate_api failed")
         return JsonResponse({
@@ -1056,6 +1060,8 @@ def khalti_initiate_api(request):
 
     except GatewayError as error:
         return JsonResponse({"success": False, "error": str(error)}, status=503)
+    except ValueError as error:
+        return JsonResponse({"success": False, "error": str(error)}, status=400)
     except Exception:
         logger.exception("khalti_initiate_api failed")
         return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."}, status=400)
